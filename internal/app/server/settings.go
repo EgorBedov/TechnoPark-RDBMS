@@ -2,9 +2,21 @@ package server
 
 import (
 	"egogoger/internal/pkg/db"
-	"egogoger/internal/pkg/forum/delivery"
-	"egogoger/internal/pkg/forum/repository"
-	"egogoger/internal/pkg/forum/usecase"
+	forumDelivery "egogoger/internal/pkg/forum/delivery"
+	forumRepo "egogoger/internal/pkg/forum/repository"
+	forumUseCase "egogoger/internal/pkg/forum/usecase"
+	postDelivery "egogoger/internal/pkg/post/delivery"
+	postRepo "egogoger/internal/pkg/post/repository"
+	postUseCase "egogoger/internal/pkg/post/usecase"
+	serviceDelivery "egogoger/internal/pkg/service/delivery"
+	serviceRepo "egogoger/internal/pkg/service/repository"
+	serviceUseCase "egogoger/internal/pkg/service/usecase"
+	threadDelivery "egogoger/internal/pkg/thread/delivery"
+	threadRepo "egogoger/internal/pkg/thread/repository"
+	threadUseCase "egogoger/internal/pkg/thread/usecase"
+	userDelivery "egogoger/internal/pkg/user/delivery"
+	userRepository"egogoger/internal/pkg/user/repository"
+	userUseCase "egogoger/internal/pkg/user/usecase"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -36,10 +48,29 @@ func (ss *Settings) GetRouter() *mux.Router {
 	r := mux.NewRouter()
 	api := r.PathPrefix("/api").Subrouter()
 
-	forum := api.PathPrefix("/forum").Subrouter()
-	delivery.NewForumHandler(
-		usecase.NewForumUseCase(
-			repository.NewPgxForumRepository(conn)),
-		forum)
+	forumDelivery.NewForumHandler(
+		forumUseCase.NewForumUseCase(
+			forumRepo.NewPgxForumRepository(conn)),
+		api.PathPrefix("/forum").Subrouter())
+
+	postDelivery.NewPostHandler(
+		postUseCase.NewPostUseCase(
+			postRepo.NewPgxPostRepository(conn)),
+		api.PathPrefix("/post").Subrouter())
+
+	serviceDelivery.NewServiceHandler(
+		serviceUseCase.NewServiceUseCase(
+			serviceRepo.NewPgxServiceRepository(conn)),
+		api.PathPrefix("/service").Subrouter())
+
+	threadDelivery.NewThreadHandler(
+		threadUseCase.NewThreadUseCase(
+			threadRepo.NewPgxThreadRepository(conn)),
+		api.PathPrefix("/thread").Subrouter())
+
+	userDelivery.NewUserHandler(
+		userUseCase.NewUserUseCase(
+			userRepository.NewPgxUserRepository(conn)),
+		api.PathPrefix("/user").Subrouter())
 	return r
 }
