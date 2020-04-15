@@ -5,7 +5,6 @@ import (
 	"egogoger/internal/pkg/forum/delivery"
 	"egogoger/internal/pkg/forum/repository"
 	"egogoger/internal/pkg/forum/usecase"
-	"egogoger/internal/pkg/temp"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -29,13 +28,6 @@ func GetConfig() Settings {
 		Port:   5000,
 		Ip:     "127.0.0.1",
 	}
-}
-
-var routesMap = map[string][]MapHandler {
-	"/api/echo": {{
-		Type: 		"GET",
-		Handler:	temp.Echo,
-	}},
 }
 
 func (ss *Settings) GetRouter() *mux.Router {
