@@ -14,6 +14,10 @@ func NewPgxServiceRepository(db *pgx.ConnPool) service.Repository {
 	return &serviceRepository{db: db}
 }
 
-func (fr *serviceRepository) Echo() {
-	fmt.Println("Service repo")
+func (sr *serviceRepository) TruncateAll() {
+	fmt.Println("Service repo TruncateAll")
+}
+
+func (sr *serviceRepository) GetInfo() {
+	fmt.Println("Service repo GetInfo")
 }

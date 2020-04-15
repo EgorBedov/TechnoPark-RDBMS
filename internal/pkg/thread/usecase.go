@@ -1,5 +1,9 @@
 package thread
 
 type UseCase interface {
-	Echo()
+	CreatePosts()
+	GetInfo()
+	PostInfo()
+	GetPosts()
+	Vote()
 }

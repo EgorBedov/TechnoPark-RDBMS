@@ -13,8 +13,12 @@ func NewPostUseCase(f post.Repository) post.UseCase {
 	return &postUseCase{postRepo: f}
 }
 
-func (fu *postUseCase) Echo() {
-	fmt.Println("Post usecase")
+func (pu *postUseCase) GetInfo() {
+	fmt.Println("Post usecase GetInfo")
+	pu.postRepo.GetInfo()
+}
 
-	fu.postRepo.Echo()
+func (pu *postUseCase) PostInfo() {
+	fmt.Println("Post usecase PostInfo")
+	pu.postRepo.PostInfo()
 }

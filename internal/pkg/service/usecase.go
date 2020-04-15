@@ -1,5 +1,6 @@
 package service
 
 type UseCase interface {
-	Echo()
+	TruncateAll()
+	GetInfo()
 }

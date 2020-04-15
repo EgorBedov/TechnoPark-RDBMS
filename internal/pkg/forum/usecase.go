@@ -1,5 +1,9 @@
 package forum
 
 type UseCase interface {
-	Echo()
+	CreateForum()
+	GetInfo()
+	CreateThread()
+	GetUsers()
+	GetThreads()
 }

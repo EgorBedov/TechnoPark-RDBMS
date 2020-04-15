@@ -13,8 +13,27 @@ func NewThreadUseCase(f thread.Repository) thread.UseCase {
 	return &threadUseCase{threadRepo: f}
 }
 
-func (fu *threadUseCase) Echo() {
-	fmt.Println("Thread usecase")
+func (tu *threadUseCase) CreatePosts() {
+	fmt.Println("Thread usecase CreatePosts")
+	tu.threadRepo.CreatePosts()
+}
 
-	fu.threadRepo.Echo()
+func (tu *threadUseCase) GetInfo() {
+	fmt.Println("Thread usecase GetInfo")
+	tu.threadRepo.GetInfo()
+}
+
+func (tu *threadUseCase) PostInfo() {
+	fmt.Println("Thread usecase PostInfo")
+	tu.threadRepo.PostInfo()
+}
+
+func (tu *threadUseCase) GetPosts() {
+	fmt.Println("Thread usecase GetPosts")
+	tu.threadRepo.GetPosts()
+}
+
+func (tu *threadUseCase) Vote() {
+	fmt.Println("Thread usecase Vote")
+	tu.threadRepo.Vote()
 }

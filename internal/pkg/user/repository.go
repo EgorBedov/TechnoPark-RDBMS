@@ -1,5 +1,7 @@
 package user
 
 type Repository interface {
-	Echo()
+	CreateUser()
+	GetInfo()
+	PostInfo()
 }

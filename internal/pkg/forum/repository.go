@@ -1,5 +1,9 @@
 package forum
 
 type Repository interface {
-	Echo()
+	CreateForum()
+	GetInfo()
+	CreateThread()
+	GetUsers()
+	GetThreads()
 }

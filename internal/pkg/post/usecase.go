@@ -1,5 +1,6 @@
 package post
 
 type UseCase interface {
-	Echo()
+	GetInfo()
+	PostInfo()
 }

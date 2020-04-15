@@ -14,6 +14,22 @@ func NewPgxForumRepository(db *pgx.ConnPool) forum.Repository {
 	return &forumRepository{db: db}
 }
 
-func (fr *forumRepository) Echo() {
-	fmt.Println("Forum repo")
+func (fr *forumRepository) CreateForum() {
+	fmt.Println("Forum repo CreateForum")
+}
+
+func (fr *forumRepository) GetInfo() {
+	fmt.Println("Forum repo GetInfo")
+}
+
+func (fr *forumRepository) CreateThread() {
+	fmt.Println("Forum repo CreateThread")
+}
+
+func (fr *forumRepository) GetUsers() {
+	fmt.Println("Forum repo GetUsers")
+}
+
+func (fr *forumRepository) GetThreads() {
+	fmt.Println("Forum repo GetThreads")
 }

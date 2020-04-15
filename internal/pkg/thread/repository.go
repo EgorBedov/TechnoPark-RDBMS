@@ -1,5 +1,9 @@
 package thread
 
 type Repository interface {
-	Echo()
+	CreatePosts()
+	GetInfo()
+	PostInfo()
+	GetPosts()
+	Vote()
 }

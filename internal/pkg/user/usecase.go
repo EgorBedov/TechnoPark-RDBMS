@@ -1,5 +1,7 @@
 package user
 
 type UseCase interface {
-	Echo()
+	CreateUser()
+	GetInfo()
+	PostInfo()
 }

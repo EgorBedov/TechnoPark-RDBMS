@@ -14,11 +14,23 @@ type UserHandler struct {
 func NewUserHandler(fu user.UseCase, r *mux.Router) {
 	handler := &UserHandler{userUseCase:fu}
 
-	r.HandleFunc("/echo", handler.Echo).Methods("GET")
+	nickname := r.PathPrefix("/{nickname}").Subrouter()
+	nickname.HandleFunc("/create", 	handler.CreateUser)	.Methods("POST")
+	nickname.HandleFunc("/profile", 	handler.GetInfo)	.Methods("GET")
+	nickname.HandleFunc("/profile", 	handler.PostInfo)	.Methods("POST")
 }
 
-func (fh *UserHandler) Echo(h http.ResponseWriter, r *http.Request) {
-	fmt.Println("User Echo")
+func (uh *UserHandler) CreateUser(h http.ResponseWriter, r *http.Request) {
+	fmt.Println("User CreateUser")
+	uh.userUseCase.CreateUser()
+}
 
-	fh.userUseCase.Echo()
+func (uh *UserHandler) GetInfo(h http.ResponseWriter, r *http.Request) {
+	fmt.Println("User GetInfo")
+	uh.userUseCase.GetInfo()
+}
+
+func (uh *UserHandler) PostInfo(h http.ResponseWriter, r *http.Request) {
+	fmt.Println("User PostInfo")
+	uh.userUseCase.PostInfo()
 }

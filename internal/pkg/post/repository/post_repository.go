@@ -14,6 +14,10 @@ func NewPgxPostRepository(db *pgx.ConnPool) post.Repository {
 	return &postRepository{db: db}
 }
 
-func (fr *postRepository) Echo() {
-	fmt.Println("Post repo")
+func (pr *postRepository) GetInfo() {
+	fmt.Println("Post repo GetInfo")
+}
+
+func (pr *postRepository) PostInfo() {
+	fmt.Println("Post repo PostInfo")
 }

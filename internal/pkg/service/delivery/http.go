@@ -14,11 +14,16 @@ type ServiceHandler struct {
 func NewServiceHandler(fu service.UseCase, r *mux.Router) {
 	handler := &ServiceHandler{serviceUseCase:fu}
 
-	r.HandleFunc("/echo", handler.Echo).Methods("GET")
+	r.HandleFunc("/clear", 	handler.TruncateAll)	.Methods("POST")
+	r.HandleFunc("/status", 	handler.GetInfo)		.Methods("GET")
 }
 
-func (fh *ServiceHandler) Echo(h http.ResponseWriter, r *http.Request) {
-	fmt.Println("Service Echo")
+func (sh *ServiceHandler) TruncateAll(h http.ResponseWriter, r *http.Request) {
+	fmt.Println("Service handler TruncateAll")
+	sh.serviceUseCase.TruncateAll()
+}
 
-	fh.serviceUseCase.Echo()
+func (sh *ServiceHandler) GetInfo(h http.ResponseWriter, r *http.Request) {
+	fmt.Println("Service handler GetInfo")
+	sh.serviceUseCase.GetInfo()
 }

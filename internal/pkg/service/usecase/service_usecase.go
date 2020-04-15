@@ -13,8 +13,12 @@ func NewServiceUseCase(f service.Repository) service.UseCase {
 	return &serviceUseCase{serviceRepo: f}
 }
 
-func (fu *serviceUseCase) Echo() {
-	fmt.Println("Service usecase")
+func (su *serviceUseCase) TruncateAll() {
+	fmt.Println("Service usecase TruncateAll")
+	su.serviceRepo.TruncateAll()
+}
 
-	fu.serviceRepo.Echo()
+func (su *serviceUseCase) GetInfo() {
+	fmt.Println("Service usecase GetInfo")
+	su.serviceRepo.GetInfo()
 }

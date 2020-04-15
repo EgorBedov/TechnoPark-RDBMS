@@ -14,6 +14,14 @@ func NewPgxUserRepository(db *pgx.ConnPool) user.Repository {
 	return &userRepository{db: db}
 }
 
-func (fr *userRepository) Echo() {
-	fmt.Println("User repo")
+func (ur *userRepository) CreateUser() {
+	fmt.Println("User repo CreateUser")
+}
+
+func (ur *userRepository) GetInfo() {
+	fmt.Println("User repo GetInfo")
+}
+
+func (ur *userRepository) PostInfo() {
+	fmt.Println("User repo PostInfo")
 }

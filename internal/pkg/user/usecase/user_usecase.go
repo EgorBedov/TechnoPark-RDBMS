@@ -13,8 +13,17 @@ func NewUserUseCase(f user.Repository) user.UseCase {
 	return &userUseCase{userRepo: f}
 }
 
-func (fu *userUseCase) Echo() {
-	fmt.Println("User usecase")
+func (uu *userUseCase) CreateUser() {
+	fmt.Println("User usecase CreateUser")
+	uu.userRepo.CreateUser()
+}
 
-	fu.userRepo.Echo()
+func (uu *userUseCase) GetInfo() {
+	fmt.Println("User usecase GetInfo")
+	uu.userRepo.GetInfo()
+}
+
+func (uu *userUseCase) PostInfo() {
+	fmt.Println("User usecase PostInfo")
+	uu.userRepo.PostInfo()
 }
