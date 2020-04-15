@@ -1,7 +1,11 @@
 package server
 
 import (
-	"forum/internal/pkg/temp"
+	"egogoger/internal/pkg/db"
+	"egogoger/internal/pkg/forum/delivery"
+	"egogoger/internal/pkg/forum/repository"
+	"egogoger/internal/pkg/forum/usecase"
+	"egogoger/internal/pkg/temp"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -35,9 +39,15 @@ var routesMap = map[string][]MapHandler {
 }
 
 func (ss *Settings) GetRouter() *mux.Router {
+	conn := db.ConnectToDB()
+
 	r := mux.NewRouter()
 	api := r.PathPrefix("/api").Subrouter()
-	api.HandleFunc("/echo", temp.Echo).
-		Methods("GET")
+
+	forum := api.PathPrefix("/forum").Subrouter()
+	delivery.NewForumHandler(
+		usecase.NewForumUseCase(
+			repository.NewPgxForumRepository(conn)),
+		forum)
 	return r
 }

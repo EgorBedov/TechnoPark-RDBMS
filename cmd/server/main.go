@@ -1,7 +1,7 @@
 package main
 
 import (
-	"forum/internal/app/server"
+	"egogoger/internal/app/server"
 )
 
 func main() {
