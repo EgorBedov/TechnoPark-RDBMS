@@ -2,7 +2,7 @@ package usecase
 
 import (
 	"egogoger/internal/pkg/forum"
-	"fmt"
+	"egogoger/internal/pkg/models"
 )
 
 type forumUseCase struct {
@@ -13,27 +13,22 @@ func NewForumUseCase(f forum.Repository) forum.UseCase {
 	return &forumUseCase{forumRepo: f}
 }
 
-func (fu *forumUseCase) CreateForum() {
-	fmt.Println("Forum usecase CreateForum")
-	fu.forumRepo.CreateForum()
+func (fu *forumUseCase) CreateForum(frm *models.Forum) int {
+	return fu.forumRepo.CreateForum(frm)
 }
 
-func (fu *forumUseCase) GetInfo() {
-	fmt.Println("Forum usecase GetInfo")
-	fu.forumRepo.GetInfo()
+func (fu *forumUseCase) GetInfo(frm *models.Forum) int {
+	return fu.forumRepo.GetInfo(frm)
 }
 
-func (fu *forumUseCase) CreateThread() {
-	fmt.Println("Forum usecase CreateThread")
-	fu.forumRepo.CreateThread()
+func (fu *forumUseCase) CreateThread(thrd *models.Thread) int {
+	return fu.forumRepo.CreateThread(thrd)
 }
 
-func (fu *forumUseCase) GetUsers() {
-	fmt.Println("Forum usecase GetUsers")
-	fu.forumRepo.GetUsers()
+func (fu *forumUseCase) GetUsers(query models.Query) ([]models.User, int) {
+	return fu.forumRepo.GetUsers(query)
 }
 
-func (fu *forumUseCase) GetThreads() {
-	fmt.Println("Forum usecase GetThreads")
-	fu.forumRepo.GetThreads()
+func (fu *forumUseCase) GetThreads(query models.Query) ([]models.Thread, int) {
+	return fu.forumRepo.GetThreads(query)
 }

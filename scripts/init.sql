@@ -12,14 +12,14 @@ CREATE TABLE IF NOT EXISTS usr
 
 CREATE TABLE IF NOT EXISTS forum
 (
+    id          SERIAL              PRIMARY KEY,
     title       VARCHAR(1024)       NOT NULL,
-    usr         VARCHAR(128)        NOT NULL,
+    usr         VARCHAR(128)        NOT NULL REFERENCES usr (nickname),
     slug        VARCHAR(128)        NOT NULL UNIQUE,
     posts       BIGINT              DEFAULT 0,
     threads     INTEGER             DEFAULT 0,
 
-    id          SERIAL              PRIMARY KEY,
-    usr_id      INTEGER             REFERENCES usr (id)
+    usr_id      INTEGER             NOT NULL REFERENCES usr (id)
 );
 
 CREATE TABLE IF NOT EXISTS thread
@@ -30,11 +30,11 @@ CREATE TABLE IF NOT EXISTS thread
     forum       VARCHAR(128)        REFERENCES forum (slug),
     message     TEXT                DEFAULT NULL,
     votes       INTEGER             DEFAULT 0,
-    slug        VARCHAR(128)        NOT NULL,
+    slug        VARCHAR(128)        NOT NULL UNIQUE,
     created     TIMESTAMP           DEFAULT current_timestamp,
 
-    author_id   INTEGER             REFERENCES usr (id),
-    forum_id    INTEGER             REFERENCES forum (id)
+    author_id   INTEGER             NOT NULL REFERENCES usr (id),
+    forum_id    INTEGER             NOT NULL REFERENCES forum (id)
 );
 
 CREATE TABLE IF NOT EXISTS post
@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS post
     thread_id   INTEGER             REFERENCES thread (id),
     created     TIMESTAMP           DEFAULT current_timestamp,
 
-    author_id   INTEGER             REFERENCES usr (id),
-    forum_id    INTEGER             REFERENCES forum (id)
+    author_id   INTEGER             NOT NULL REFERENCES usr (id),
+    forum_id    INTEGER             NOT NULL REFERENCES forum (id)
 );
 
 CREATE TABLE IF NOT EXISTS vote
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS vote
     nickname    VARCHAR(128)        REFERENCES usr (nickname),
     voice       INTEGER             NOT NULL,
 
-    usr_id      INTEGER             REFERENCES usr (id)
+    usr_id      INTEGER             NOT NULL REFERENCES usr (id)
 );
 
 COMMIT;
