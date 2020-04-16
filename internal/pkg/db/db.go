@@ -2,7 +2,6 @@ package db
 
 import (
 	"github.com/jackc/pgx"
-	"os"
 	"sync"
 )
 
@@ -10,9 +9,10 @@ var (
 	// TODO: add it as environment variable
 	host     = "localhost"
 	port     = uint16(5432)
-	user     = os.Getenv("POSTGRES_USER")
-	password = os.Getenv("POSTGRES_PASSWORD")
-	dbname   = os.Getenv("POSTGRES_DB")
+	//user     = os.Getenv("POSTGRES_USER")
+	//password = os.Getenv("POSTGRES_PASSWORD")
+	//dbname   = os.Getenv("POSTGRES_DB")
+	dbname 	 = "rdbms"
 )
 
 
@@ -25,8 +25,8 @@ func ConnectToDB() *pgx.ConnPool {
 			Host:     host,
 			Port:     port,
 			Database: dbname,
-			User:     user,
-			Password: password,
+			//User:     user,
+			//Password: password,
 		}
 		pgxConnPoolConfig := pgx.ConnPoolConfig{
 			MaxConnections: 1,

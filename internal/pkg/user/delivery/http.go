@@ -1,8 +1,10 @@
 package delivery
 
 import (
+	"egogoger/internal/pkg/models"
+	"egogoger/internal/pkg/network"
 	"egogoger/internal/pkg/user"
-	"fmt"
+	"encoding/json"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -20,17 +22,47 @@ func NewUserHandler(fu user.UseCase, r *mux.Router) {
 	nickname.HandleFunc("/profile", 	handler.PostInfo)	.Methods("POST")
 }
 
-func (uh *UserHandler) CreateUser(h http.ResponseWriter, r *http.Request) {
-	fmt.Println("User CreateUser")
-	uh.userUseCase.CreateUser()
+func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var user models.User
+	if err := decoder.Decode(&user); err != nil {
+		network.GenErrorCode(w, r, "Error within parse json", http.StatusBadRequest)
+		return
+	}
+	user.NickName = mux.Vars(r)["nickname"]
+
+	status := uh.userUseCase.CreateUser(&user)
+	network.Jsonify(w, user, status)
 }
 
-func (uh *UserHandler) GetInfo(h http.ResponseWriter, r *http.Request) {
-	fmt.Println("User GetInfo")
-	uh.userUseCase.GetInfo()
+func (uh *UserHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
+	usr := models.User{
+		NickName: mux.Vars(r)["nickname"],
+	}
+	status := uh.userUseCase.GetInfo(&usr)
+
+	if status != http.StatusOK {
+		network.GenErrorCode(w, r, "Can't find user with nickname " + usr.NickName, status)
+		return
+	}
+
+	network.Jsonify(w, usr, status)
 }
 
-func (uh *UserHandler) PostInfo(h http.ResponseWriter, r *http.Request) {
-	fmt.Println("User PostInfo")
-	uh.userUseCase.PostInfo()
+func (uh *UserHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var usr models.User
+	if err := decoder.Decode(&usr); err != nil {
+		network.GenErrorCode(w, r, "Error within parse json", http.StatusBadRequest)
+		return
+	}
+	usr.NickName = mux.Vars(r)["nickname"]
+
+	status := uh.userUseCase.PostInfo(&usr)
+
+	if status != http.StatusOK {
+		network.GenErrorCode(w, r, "Can't find user with nickname " + usr.NickName, status)
+		return
+	}
+	network.Jsonify(w, usr, status)
 }
