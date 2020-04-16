@@ -1,9 +1,11 @@
 package repository
 
 import (
+	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/thread"
 	"fmt"
 	"github.com/jackc/pgx"
+	"net/http"
 )
 
 type threadRepository struct {
@@ -14,8 +16,12 @@ func NewPgxThreadRepository(db *pgx.ConnPool) thread.Repository {
 	return &threadRepository{db: db}
 }
 
-func (tr *threadRepository) CreatePosts() {
-	fmt.Println("Thread repo CreatePosts")
+func (tr *threadRepository) CreatePosts(posts []models.Post, slugOrId string) int {
+	//sqlStatement := `
+	//	INSERT INTO post (id, parent, author, message, isEdited, forum, thread_id, created) VALUES
+	//		();`
+
+	return http.StatusOK
 }
 
 func (tr *threadRepository) GetInfo() {

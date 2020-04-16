@@ -1,7 +1,9 @@
 package thread
 
+import "egogoger/internal/pkg/models"
+
 type Repository interface {
-	CreatePosts()
+	CreatePosts([]models.Post, string) int
 	GetInfo()
 	PostInfo()
 	GetPosts()

@@ -1,7 +1,10 @@
 package delivery
 
 import (
+	"egogoger/internal/pkg/models"
+	"egogoger/internal/pkg/network"
 	"egogoger/internal/pkg/thread"
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
@@ -22,27 +25,42 @@ func NewThreadHandler(fu thread.UseCase, r *mux.Router) {
 	slugOrId.HandleFunc("/vote", 		handler.Vote)			.Methods("POST")
 }
 
-func (th *ThreadHandler) CreatePosts(h http.ResponseWriter, r *http.Request) {
-	fmt.Println("Thread handler CreatePosts")
-	th.threadUseCase.CreatePosts()
+func (th *ThreadHandler) CreatePosts(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var posts []models.Post
+	if err := decoder.Decode(&posts); err != nil {
+		fmt.Println(err)
+		network.GenErrorCode(w, r, "Error within parse json", http.StatusBadRequest)
+		return
+	}
+
+	slugOrId := mux.Vars(r)["slug_or_id"]
+	status := th.threadUseCase.CreatePosts(posts, slugOrId)
+
+	if status != http.StatusOK {
+		network.GenErrorCode(w, r, "Can't find parent message or thread with slug_or_id " + slugOrId, status)
+		return
+	}
+
+	network.Jsonify(w, posts, status)
 }
 
-func (th *ThreadHandler) GetInfo(h http.ResponseWriter, r *http.Request) {
+func (th *ThreadHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Thread handler GetInfo")
 	th.threadUseCase.GetInfo()
 }
 
-func (th *ThreadHandler) PostInfo(h http.ResponseWriter, r *http.Request) {
+func (th *ThreadHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Thread handler PostInfo")
 	th.threadUseCase.PostInfo()
 }
 
-func (th *ThreadHandler) GetPosts(h http.ResponseWriter, r *http.Request) {
+func (th *ThreadHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Thread handler GetPosts")
 	th.threadUseCase.GetPosts()
 }
 
-func (th *ThreadHandler) Vote(h http.ResponseWriter, r *http.Request) {
+func (th *ThreadHandler) Vote(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("Thread handler Vote")
 	th.threadUseCase.Vote()
 }

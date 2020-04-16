@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/thread"
 	"fmt"
 )
@@ -13,9 +14,8 @@ func NewThreadUseCase(f thread.Repository) thread.UseCase {
 	return &threadUseCase{threadRepo: f}
 }
 
-func (tu *threadUseCase) CreatePosts() {
-	fmt.Println("Thread usecase CreatePosts")
-	tu.threadRepo.CreatePosts()
+func (tu *threadUseCase) CreatePosts(posts []models.Post, slugOrId string) int {
+	return tu.threadRepo.CreatePosts(posts, slugOrId)
 }
 
 func (tu *threadUseCase) GetInfo() {
