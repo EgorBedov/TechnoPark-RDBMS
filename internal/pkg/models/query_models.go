@@ -4,6 +4,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type Query struct {
@@ -19,6 +20,41 @@ type PostQuery struct {
 	Since 	int
 	Sort	string
 	Desc 	bool
+}
+
+type PostInfoQuery struct {
+	PostId	int
+	Author 	bool
+	Forum	bool
+	Thread	bool
+}
+
+type Message struct {
+	Message 	string		`json:"message"`
+}
+
+func DecodePostInfoQuery(r *http.Request) (*PostInfoQuery, error) {
+	postId, err := strconv.Atoi(mux.Vars(r)["id"])
+	query := PostInfoQuery{
+		PostId: postId,
+		Author:	false,
+		Forum:	false,
+		Thread:	false,
+	}
+
+	if params := r.URL.Query().Get("related"); params != "" {
+		if strings.Contains(params, "user") {
+			query.Author = true
+		}
+		if strings.Contains(params, "forum") {
+			query.Forum = true
+		}
+		if strings.Contains(params, "thread") {
+			query.Thread = true
+		}
+	}
+
+	return &query, err
 }
 
 func DecodePostQuery(r *http.Request) PostQuery {

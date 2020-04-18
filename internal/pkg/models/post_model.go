@@ -12,3 +12,10 @@ type Post struct {
 	ThreadId 	int       `json:"thread, omitempty"`
 	Created  	time.Time `json:"created, omitempty"`
 }
+
+type PostInfo struct {
+	Pst 		*Post		`json:"post"`
+	Author		*User		`json:"author,omitempty"`
+	Thrd		*Thread		`json:"thread,omitempty"`
+	Frm 		*Forum		`json:"forum,omitempty"`
+}

@@ -49,7 +49,8 @@ CREATE TABLE IF NOT EXISTS post
     created     TIMESTAMP           DEFAULT current_timestamp,
 
     author_id   INTEGER             NOT NULL REFERENCES usr (id) ON DELETE CASCADE,
-    forum_id    INTEGER             NOT NULL REFERENCES forum (id) ON DELETE CASCADE
+    forum_id    INTEGER             NOT NULL REFERENCES forum (id) ON DELETE CASCADE,
+    CONSTRAINT unique_post UNIQUE (id, thread_id)
 );
 
 CREATE TABLE IF NOT EXISTS vote
@@ -62,6 +63,10 @@ CREATE TABLE IF NOT EXISTS vote
     CONSTRAINT unique_vote UNIQUE (usr_id, thread_id)
 );
 
+
+
+
+-- Table that stores max id from every table
 CREATE TABLE IF NOT EXISTS summary
 (
     users       INTEGER             NOT NULL DEFAULT 0,
@@ -71,5 +76,25 @@ CREATE TABLE IF NOT EXISTS summary
 );
 
 INSERT INTO summary DEFAULT VALUES;
+
+-- Change isEdited field on post on update
+DROP FUNCTION IF EXISTS trigger_update_post();
+CREATE FUNCTION trigger_update_post()
+    RETURNS trigger AS
+    $BODY$
+    BEGIN
+        IF NEW.message <> OLD.message THEN
+            NEW.isedited = true;
+        END IF;
+        RETURN NEW;
+    END;
+    $BODY$
+    LANGUAGE plpgsql;
+
+CREATE TRIGGER update_post
+    BEFORE UPDATE ON post
+    FOR EACH ROW
+    EXECUTE PROCEDURE trigger_update_post();
+
 
 COMMIT;
