@@ -1,6 +1,8 @@
 package service
 
+import "egogoger/internal/pkg/models"
+
 type UseCase interface {
-	TruncateAll()
-	GetInfo()
+	TruncateAll() int
+	GetInfo() (*models.Summary, int)
 }

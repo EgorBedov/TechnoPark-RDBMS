@@ -1,8 +1,8 @@
 package delivery
 
 import (
+	"egogoger/internal/pkg/network"
 	"egogoger/internal/pkg/service"
-	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -18,12 +18,24 @@ func NewServiceHandler(fu service.UseCase, r *mux.Router) {
 	r.HandleFunc("/status", 	handler.GetInfo)		.Methods("GET")
 }
 
-func (sh *ServiceHandler) TruncateAll(h http.ResponseWriter, r *http.Request) {
-	fmt.Println("Service handler TruncateAll")
-	sh.serviceUseCase.TruncateAll()
+func (sh *ServiceHandler) TruncateAll(w http.ResponseWriter, r *http.Request) {
+	status := sh.serviceUseCase.TruncateAll()
+
+	if status != http.StatusOK {
+		network.GenErrorCode(w, r, http.StatusText(status), status)
+		return
+	}
+
+	network.Jsonify(w, http.StatusText(status), status)
 }
 
-func (sh *ServiceHandler) GetInfo(h http.ResponseWriter, r *http.Request) {
-	fmt.Println("Service handler GetInfo")
-	sh.serviceUseCase.GetInfo()
+func (sh *ServiceHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
+	summary, status := sh.serviceUseCase.GetInfo()
+
+	if status != http.StatusOK {
+		network.GenErrorCode(w, r, http.StatusText(status), status)
+		return
+	}
+
+	network.Jsonify(w, &summary, status)
 }
