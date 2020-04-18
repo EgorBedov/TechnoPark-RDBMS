@@ -90,11 +90,48 @@ CREATE FUNCTION trigger_update_post()
     END;
     $BODY$
     LANGUAGE plpgsql;
-
 CREATE TRIGGER update_post
     BEFORE UPDATE ON post
     FOR EACH ROW
     EXECUTE PROCEDURE trigger_update_post();
+
+
+-- Increment threads on forum
+DROP FUNCTION IF EXISTS trigger_increment_threads();
+CREATE FUNCTION trigger_increment_threads()
+RETURNS trigger AS
+    $BODY$
+    BEGIN
+        UPDATE forum
+            SET threads = threads + 1
+        WHERE id = NEW.forum_id;
+        RETURN NEW;
+    END;
+    $BODY$ LANGUAGE plpgsql;
+CREATE TRIGGER increment_threads
+    AFTER INSERT ON thread
+    FOR EACH ROW
+    EXECUTE PROCEDURE trigger_increment_threads();
+
+
+-- Increment posts on forum
+-- TODO: inserting pack of posts so remove this maybe
+DROP FUNCTION IF EXISTS trigger_increment_posts();
+CREATE FUNCTION trigger_increment_posts()
+RETURNS trigger AS
+    $BODY$
+    BEGIN
+        UPDATE forum
+            SET posts = posts + 1
+        WHERE id = NEW.forum_id;
+        RETURN NEW;
+    END;
+    $BODY$ LANGUAGE plpgsql;
+CREATE TRIGGER increment_posts
+    AFTER INSERT ON post
+    FOR EACH ROW
+    EXECUTE PROCEDURE trigger_increment_posts();
+
 
 
 COMMIT;
