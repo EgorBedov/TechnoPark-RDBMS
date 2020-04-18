@@ -3,7 +3,6 @@ package usecase
 import (
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/thread"
-	"fmt"
 )
 
 type threadUseCase struct {
@@ -18,22 +17,18 @@ func (tu *threadUseCase) CreatePosts(posts []models.Post, slugOrId string) int {
 	return tu.threadRepo.CreatePosts(posts, slugOrId)
 }
 
-func (tu *threadUseCase) GetInfo() {
-	fmt.Println("Thread usecase GetInfo")
-	tu.threadRepo.GetInfo()
+func (tu *threadUseCase) GetInfo(thrd *models.Thread, slugOrId string) int {
+	return tu.threadRepo.GetInfo(thrd, slugOrId)
 }
 
-func (tu *threadUseCase) PostInfo() {
-	fmt.Println("Thread usecase PostInfo")
-	tu.threadRepo.PostInfo()
+func (tu *threadUseCase) UpdateThread(thrd *models.Thread, slugOrId string) int {
+	return tu.threadRepo.UpdateThread(thrd, slugOrId)
 }
 
-func (tu *threadUseCase) GetPosts() {
-	fmt.Println("Thread usecase GetPosts")
-	tu.threadRepo.GetPosts()
+func (tu *threadUseCase) GetPosts(query *models.PostQuery) ([]models.Post, int) {
+	return tu.threadRepo.GetPosts(query)
 }
 
-func (tu *threadUseCase) Vote() {
-	fmt.Println("Thread usecase Vote")
-	tu.threadRepo.Vote()
+func (tu *threadUseCase) Vote(vote *models.Vote) int {
+	return tu.threadRepo.Vote(vote)
 }

@@ -5,7 +5,6 @@ import (
 	"egogoger/internal/pkg/network"
 	"egogoger/internal/pkg/thread"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"net/http"
 )
@@ -20,7 +19,7 @@ func NewThreadHandler(fu thread.UseCase, r *mux.Router) {
 	slugOrId := r.PathPrefix("/{slug_or_id}").Subrouter()
 	slugOrId.HandleFunc("/create", 	handler.CreatePosts)	.Methods("POST")
 	slugOrId.HandleFunc("/details", 	handler.GetInfo)		.Methods("GET")
-	slugOrId.HandleFunc("/details", 	handler.PostInfo)		.Methods("POST")
+	slugOrId.HandleFunc("/details", 	handler.UpdateThread)	.Methods("POST")
 	slugOrId.HandleFunc("/posts", 	handler.GetPosts)		.Methods("GET")
 	slugOrId.HandleFunc("/vote", 		handler.Vote)			.Methods("POST")
 }
@@ -29,7 +28,6 @@ func (th *ThreadHandler) CreatePosts(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var posts []models.Post
 	if err := decoder.Decode(&posts); err != nil {
-		fmt.Println(err)
 		network.GenErrorCode(w, r, "Error within parse json", http.StatusBadRequest)
 		return
 	}
@@ -46,21 +44,75 @@ func (th *ThreadHandler) CreatePosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (th *ThreadHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Thread handler GetInfo")
-	th.threadUseCase.GetInfo()
+	slugOrId := mux.Vars(r)["slug_or_id"]
+	thrd := models.Thread{}
+	status := th.threadUseCase.GetInfo(&thrd, slugOrId)
+
+	if status == http.StatusNotFound {
+		network.GenErrorCode(w, r, "Can't find thread with slug or id " + slugOrId, status)
+		return
+	}
+
+	network.Jsonify(w, thrd, status)
 }
 
-func (th *ThreadHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Thread handler PostInfo")
-	th.threadUseCase.PostInfo()
+func (th *ThreadHandler) UpdateThread(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var thrd models.Thread
+	if err := decoder.Decode(&thrd); err != nil {
+		network.GenErrorCode(w, r, err.Error(), http.StatusBadRequest)
+		return
+	}
+	slugOrId := mux.Vars(r)["slug_or_id"]
+
+	status := th.threadUseCase.UpdateThread(&thrd, slugOrId)
+
+	if status == http.StatusNotFound {
+		network.GenErrorCode(w, r, "Can't find thread with slug_or_id " + thrd.Slug, status)
+		return
+	}
+
+	network.Jsonify(w, thrd, status)
 }
 
 func (th *ThreadHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Thread handler GetPosts")
-	th.threadUseCase.GetPosts()
+	query := models.DecodePostQuery(r)
+	posts, status := th.threadUseCase.GetPosts(&query)
+	if status == http.StatusNotFound {
+		network.GenErrorCode(w, r, "Can't find thread with slug or id " + query.SlugOrId, status)
+		return
+	}
+
+	network.Jsonify(w, posts, status)
 }
 
 func (th *ThreadHandler) Vote(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Thread handler Vote")
-	th.threadUseCase.Vote()
+	// Get info about thread
+	slugOrId := mux.Vars(r)["slug_or_id"]
+	thrd := models.Thread{}
+	status := th.threadUseCase.GetInfo(&thrd, slugOrId)
+	if status == http.StatusNotFound {
+		network.GenErrorCode(w, r, "Can't find thread with slug or id " + slugOrId, status)
+		return
+	}
+
+	// Prepare vote
+	decoder := json.NewDecoder(r.Body)
+	var vote models.Vote
+	if err := decoder.Decode(&vote); err != nil {
+		network.GenErrorCode(w, r, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Send vote
+	vote.ThreadId = thrd.Id
+	status = th.threadUseCase.Vote(&vote)
+	if status != http.StatusOK {
+		network.GenErrorCode(w, r, "Vote failed", status)
+		return
+	}
+
+	// Change thrd and return
+	thrd.Votes += vote.Voice
+	network.Jsonify(w, thrd, status)
 }

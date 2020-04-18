@@ -88,7 +88,6 @@ func (fh *ForumHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 
 func (fh *ForumHandler) GetThreads(w http.ResponseWriter, r *http.Request) {
 	query := models.DecodeQuery(r)
-	fmt.Println(query)
 	threads, status := fh.forumUseCase.GetThreads(query)
 	if status == http.StatusNotFound {
 		network.GenErrorCode(w, r, "Can't find forum with slug " + query.Slug, status)

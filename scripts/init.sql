@@ -54,10 +54,12 @@ CREATE TABLE IF NOT EXISTS post
 
 CREATE TABLE IF NOT EXISTS vote
 (
-    nickname    VARCHAR(128)        REFERENCES usr (nickname),
+    nickname    VARCHAR(128)        NOT NULL REFERENCES usr (nickname),
     voice       INTEGER             NOT NULL,
 
-    usr_id      INTEGER             NOT NULL REFERENCES usr (id)
+    thread_id   INTEGER             NOT NULL REFERENCES thread (id),
+    usr_id      INTEGER             NOT NULL REFERENCES usr (id),
+    CONSTRAINT unique_vote UNIQUE (usr_id, thread_id)
 );
 
 COMMIT;
