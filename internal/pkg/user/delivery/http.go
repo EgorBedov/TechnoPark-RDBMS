@@ -6,6 +6,7 @@ import (
 	"egogoger/internal/pkg/user"
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
 )
 
@@ -23,6 +24,8 @@ func NewUserHandler(fu user.UseCase, r *mux.Router) {
 }
 
 func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
+	log.Println("/user/{nickname}/create POST working")
+
 	decoder := json.NewDecoder(r.Body)
 	var user models.User
 	if err := decoder.Decode(&user); err != nil {
@@ -32,10 +35,12 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	user.NickName = mux.Vars(r)["nickname"]
 
 	status := uh.userUseCase.CreateUser(&user)
+	log.Println("/user/{nickname}/create POST worked nicely")
 	network.Jsonify(w, user, status)
 }
 
 func (uh *UserHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
+	log.Println("/user/{nickname}/profile GET working")
 	usr := models.User{
 		NickName: mux.Vars(r)["nickname"],
 	}
@@ -46,10 +51,13 @@ func (uh *UserHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("/user/{nickname}/profile GET worked nicely")
 	network.Jsonify(w, usr, status)
 }
 
 func (uh *UserHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
+	log.Println("/user/{nickname}/profile POST working")
+
 	decoder := json.NewDecoder(r.Body)
 	var usr models.User
 	if err := decoder.Decode(&usr); err != nil {
@@ -64,5 +72,7 @@ func (uh *UserHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
 		network.GenErrorCode(w, r, "Can't find user with nickname " + usr.NickName, status)
 		return
 	}
+
+	log.Println("/user/{nickname}/profile POST worked nicely")
 	network.Jsonify(w, usr, status)
 }
