@@ -15,9 +15,10 @@ import (
 	threadRepo "egogoger/internal/pkg/thread/repository"
 	threadUseCase "egogoger/internal/pkg/thread/usecase"
 	userDelivery "egogoger/internal/pkg/user/delivery"
-	userRepository"egogoger/internal/pkg/user/repository"
+	userRepository "egogoger/internal/pkg/user/repository"
 	userUseCase "egogoger/internal/pkg/user/usecase"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
 )
 
@@ -72,5 +73,6 @@ func (ss *Settings) GetRouter() *mux.Router {
 		userUseCase.NewUserUseCase(
 			userRepository.NewPgxUserRepository(conn)),
 		api.PathPrefix("/user").Subrouter())
+	log.Println("Handlers were set")
 	return r
 }

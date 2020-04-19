@@ -1,12 +1,16 @@
 package server
 
 import (
-	"fmt"
+	"egogoger/internal/pkg/logger"
+	"log"
 	"net/http"
 	"strconv"
 )
 
 func Start() {
+	file := logger.OpenLogFile()
+	defer file.Close()
+
 	serverSettings := GetConfig()
 	server := http.Server{
 		Addr:              serverSettings.Ip + ":" + strconv.Itoa(serverSettings.Port),
@@ -18,7 +22,8 @@ func Start() {
 		MaxHeaderBytes:    http.DefaultMaxHeaderBytes,
 	}
 
+	log.Println("Server is running on " + strconv.Itoa(serverSettings.Port))
 	if err := server.ListenAndServe(); err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 }

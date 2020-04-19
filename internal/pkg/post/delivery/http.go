@@ -5,8 +5,8 @@ import (
 	"egogoger/internal/pkg/network"
 	"egogoger/internal/pkg/post"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
 	"strconv"
 )
@@ -24,7 +24,8 @@ func NewPostHandler(fu post.UseCase, r *mux.Router) {
 }
 
 func (ph *PostHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("here")
+	log.Println("/post/{id}/details GET working")
+
 	postInfoQuery, err := models.DecodePostInfoQuery(r)
 	if err != nil {
 		network.GenErrorCode(w, r, err.Error(), http.StatusBadRequest)
@@ -38,10 +39,13 @@ func (ph *PostHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("/post/{id}/details GET worked nicely")
 	network.Jsonify(w, &postInfo, status)
 }
 
 func (ph *PostHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
+	log.Println("/post/{id}/details POST working")
+
 	decoder := json.NewDecoder(r.Body)
 	var msg models.Message
 	if err := decoder.Decode(&msg); err != nil {
@@ -63,5 +67,6 @@ func (ph *PostHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("/post/{id}/details POST worked nicely")
 	network.Jsonify(w, pst, status)
 }

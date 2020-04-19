@@ -3,8 +3,8 @@ package repository
 import (
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/thread"
-	"fmt"
 	"github.com/jackc/pgx"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -45,6 +45,7 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, slugOrId string) in
 	for iii := 0; iii < len(posts); iii++ {
 		cTag, err := tr.db.Exec(sqlStatement, posts[iii].Parent, posts[iii].Message, timeofInsertion, threadId, posts[iii].Author)
 		if err != nil || cTag.RowsAffected() == 0 {
+			log.Println("ERROR: Thread Repo CreatePosts")
 			return http.StatusInternalServerError
 		}
 	}
@@ -144,7 +145,7 @@ func (tr *threadRepository) GetPosts(query *models.PostQuery) ([]models.Post, in
 	}
 	rows, err := tr.db.Query(sqlStatement, threadId, query.Since, query.Limit)
 	if err != nil {
-		fmt.Println(err)
+		log.Println("ERROR: Thread Repo GetPosts")
 		return nil, http.StatusBadRequest
 	}
 
@@ -161,7 +162,7 @@ func (tr *threadRepository) GetPosts(query *models.PostQuery) ([]models.Post, in
 			&tempPost.ThreadId,
 			&tempPost.Created)
 		if err != nil {
-			fmt.Println(err)
+			log.Println("ERROR: Thread Repo GetPosts")
 			return nil, http.StatusInternalServerError
 		}
 		posts = append(posts, tempPost)
@@ -187,7 +188,7 @@ func (tr *threadRepository) Vote(vote *models.Vote) int {
 	oldVoice := 0
 	err := tr.db.QueryRow(sqlStatement, vote.Voice, vote.ThreadId, vote.Nickname).Scan(&oldVoice)
 	if err != nil {
-		fmt.Println(err)
+		log.Println("ERROR: Thread Repo Vote (not critical)")
 	}
 
 	// TODO: remove this query
@@ -198,6 +199,7 @@ func (tr *threadRepository) Vote(vote *models.Vote) int {
 
 	cTag, err := tr.db.Exec(sqlStatement, oldVoice, vote.Voice, vote.ThreadId)
 	if err != nil || cTag.RowsAffected() == 0 {
+		log.Println("ERROR: Thread Repo Vote")
 		return http.StatusInternalServerError
 	}
 

@@ -3,8 +3,8 @@ package repository
 import (
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/user"
-	"fmt"
 	"github.com/jackc/pgx"
+	"log"
 	"net/http"
 )
 
@@ -42,13 +42,13 @@ func (ur *userRepository) CreateUser(user *models.User) int {
 
 	// Error during execution
 	if err != nil {
-		fmt.Println(err)
+		log.Println("ERROR: User Repo CreateUser")
 		return http.StatusBadRequest
 	}
 
 	// No insertion
 	if cTag.RowsAffected() != 1 {
-		fmt.Println(cTag.RowsAffected())
+		log.Println("ERROR: User Repo GetUsers")
 		return http.StatusInternalServerError
 	}
 

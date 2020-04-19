@@ -3,8 +3,8 @@ package repository
 import (
 	"egogoger/internal/pkg/forum"
 	"egogoger/internal/pkg/models"
-	"fmt"
 	"github.com/jackc/pgx"
+	"log"
 	"net/http"
 )
 
@@ -145,7 +145,6 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 	}
 	rows, err := fr.db.Query(sqlStatement, query.Slug, query.Since, query.Limit)
 	if err != nil {
-		fmt.Println(err)
 		return nil, http.StatusBadRequest
 	}
 
@@ -158,7 +157,7 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 			&tempUser.About,
 			&tempUser.Email)
 		if err != nil {
-			fmt.Println(err)
+			log.Println("ERROR: Forum Repo GetUsers")
 			return nil, http.StatusInternalServerError
 		}
 		users = append(users, tempUser)
@@ -190,7 +189,7 @@ func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int)
 	}
 	rows, err := fr.db.Query(sqlStatement, forumId, query.Limit)
 	if err != nil {
-		fmt.Println(err)
+		log.Println("ERROR: Forum Repo GetThreads")
 		return nil, http.StatusBadRequest
 	}
 
@@ -207,7 +206,7 @@ func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int)
 			&tempThread.Slug,
 			&tempThread.Created)
 		if err != nil {
-			fmt.Println(err)
+			log.Println("ERROR: Forum Repo GetThreads")
 			return nil, http.StatusInternalServerError
 		}
 		threads = append(threads, tempThread)

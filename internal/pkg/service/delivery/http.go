@@ -4,6 +4,7 @@ import (
 	"egogoger/internal/pkg/network"
 	"egogoger/internal/pkg/service"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
 )
 
@@ -19,6 +20,8 @@ func NewServiceHandler(fu service.UseCase, r *mux.Router) {
 }
 
 func (sh *ServiceHandler) TruncateAll(w http.ResponseWriter, r *http.Request) {
+	log.Println("/service/status working")
+
 	status := sh.serviceUseCase.TruncateAll()
 
 	if status != http.StatusOK {
@@ -26,10 +29,13 @@ func (sh *ServiceHandler) TruncateAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("/service/clear worked nicely")
 	network.Jsonify(w, http.StatusText(status), status)
 }
 
 func (sh *ServiceHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
+	log.Println("/service/status working")
+
 	summary, status := sh.serviceUseCase.GetInfo()
 
 	if status != http.StatusOK {
@@ -37,5 +43,6 @@ func (sh *ServiceHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("/service/status worked nicely")
 	network.Jsonify(w, &summary, status)
 }

@@ -4,6 +4,7 @@ import (
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/service"
 	"github.com/jackc/pgx"
+	"log"
 	"net/http"
 )
 
@@ -20,6 +21,7 @@ func (sr *serviceRepository) TruncateAll() int {
 		TRUNCATE usr CASCADE;`
 	_, err := sr.db.Exec(sqlStatement)
 	if err != nil {
+		log.Println("ERROR: Service Repo TruncateAll")
 		return http.StatusInternalServerError
 	}
 
@@ -47,6 +49,7 @@ func (sr *serviceRepository) GetInfo() (*models.Summary, int) {
 		&summary.Threads,
 		&summary.Posts)
 	if err != nil {
+		log.Println("ERROR: Service Repo GetInfo")
 		return nil, http.StatusInternalServerError
 	} else {
 		return summary, http.StatusOK

@@ -5,8 +5,8 @@ import (
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/network"
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
+	"log"
 	"net/http"
 )
 
@@ -26,6 +26,8 @@ func NewForumHandler(fu forum.UseCase, r *mux.Router) {
 }
 
 func (fh *ForumHandler) CreateForum(w http.ResponseWriter, r *http.Request) {
+	log.Println("/forum/create working ")
+
 	decoder := json.NewDecoder(r.Body)
 	var foroom models.Forum
 	if err := decoder.Decode(&foroom); err != nil {
@@ -38,10 +40,14 @@ func (fh *ForumHandler) CreateForum(w http.ResponseWriter, r *http.Request) {
 		network.GenErrorCode(w, r, "Can't find user with nickname " + foroom.Usr, status)
 		return
 	}
+
+	log.Println("/forum/create worked nicely ")
 	network.Jsonify(w, foroom, status)
 }
 
 func (fh *ForumHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
+	log.Println("/forum/{slug}/details GET working ")
+
 	frm := models.Forum{
 		Slug: mux.Vars(r)["slug"],
 	}
@@ -52,14 +58,16 @@ func (fh *ForumHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("/forum/{slug}/details GET worked nicely ")
 	network.Jsonify(w, frm, status)
 }
 
 func (fh *ForumHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
+	log.Println("/forum/{slug}/details POST working ")
+
 	decoder := json.NewDecoder(r.Body)
 	var thrd models.Thread
 	if err := decoder.Decode(&thrd); err != nil {
-		fmt.Println(err)
 		network.GenErrorCode(w, r, "Error within parse json", http.StatusBadRequest)
 		return
 	}
@@ -72,10 +80,13 @@ func (fh *ForumHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("/forum/{slug}/details POST worked nicely ")
 	network.Jsonify(w, thrd, status)
 }
 
 func (fh *ForumHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
+	log.Println("/forum/{slug}/users GET working")
+
 	query := models.DecodeQuery(r)
 	users, status := fh.forumUseCase.GetUsers(query)
 	if status == http.StatusNotFound {
@@ -83,10 +94,13 @@ func (fh *ForumHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("/forum/{slug}/users GET worked nicely ")
 	network.Jsonify(w, users, status)
 }
 
 func (fh *ForumHandler) GetThreads(w http.ResponseWriter, r *http.Request) {
+	log.Println("/forum/{slug}/threads GET working")
+
 	query := models.DecodeQuery(r)
 	threads, status := fh.forumUseCase.GetThreads(query)
 	if status == http.StatusNotFound {
@@ -94,5 +108,6 @@ func (fh *ForumHandler) GetThreads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("/forum/{slug}/threads GET worked nicely ")
 	network.Jsonify(w, threads, status)
 }
