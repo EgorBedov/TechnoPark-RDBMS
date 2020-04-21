@@ -13,7 +13,7 @@ func NewForumUseCase(f forum.Repository) forum.UseCase {
 	return &forumUseCase{forumRepo: f}
 }
 
-func (fu *forumUseCase) CreateForum(frm *models.Forum) int {
+func (fu *forumUseCase) CreateForum(frm *models.Forum) (int, *models.Message) {
 	return fu.forumRepo.CreateForum(frm)
 }
 

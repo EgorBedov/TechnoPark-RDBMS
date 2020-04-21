@@ -3,7 +3,7 @@ package delivery
 import (
 	"egogoger/internal/pkg/network"
 	"egogoger/internal/pkg/service"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi"
 	"log"
 	"net/http"
 )
@@ -12,11 +12,13 @@ type ServiceHandler struct {
 	serviceUseCase service.UseCase
 }
 
-func NewServiceHandler(fu service.UseCase, r *mux.Router) {
+func NewServiceHandler(fu service.UseCase, r *chi.Mux) {
 	handler := &ServiceHandler{serviceUseCase:fu}
 
-	r.HandleFunc("/clear", 	handler.TruncateAll)	.Methods("POST")
-	r.HandleFunc("/status", 	handler.GetInfo)		.Methods("GET")
+	r.Route("/api/service", func(r chi.Router) {
+		r.Post("/clear", 	handler.TruncateAll)
+		r.Get("/status", 	handler.GetInfo)
+	})
 }
 
 func (sh *ServiceHandler) TruncateAll(w http.ResponseWriter, r *http.Request) {

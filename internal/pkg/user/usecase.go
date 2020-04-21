@@ -5,7 +5,7 @@ import (
 )
 
 type UseCase interface {
-	CreateUser(*models.User) int
+	CreateUser(*models.User) ([]models.User, int)
 	GetInfo(*models.User) int
-	PostInfo(*models.User) int
+	PostInfo(*models.User) (int, *models.Message)
 }

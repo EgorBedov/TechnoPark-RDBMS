@@ -25,6 +25,14 @@ func (sr *serviceRepository) TruncateAll() int {
 		return http.StatusInternalServerError
 	}
 
+	sqlStatement = `
+		UPDATE summary SET users = 0, forums = 0, threads = 0, posts = 0 WHERE users != -1;`
+	_, err = sr.db.Exec(sqlStatement)
+	if err != nil {
+		log.Println("ERROR: Service Repo TruncateAll")
+		return http.StatusInternalServerError
+	}
+
 	return http.StatusOK
 }
 

@@ -9,7 +9,7 @@ type Thread struct {
 	Forum	string	`json:"forum, omitempty"`
 	Message string	`json:"message"`
 	Votes	int		`json:"votes, omitempty"`
-	Slug 	string	`json:"slug"`
+	Slug 	*string	`json:"slug, omitempty"`
 	Created	time.Time	`json:"created, omitempty"`
 
 	//AuthorId int32 	`json:"authorId, omitempty"`

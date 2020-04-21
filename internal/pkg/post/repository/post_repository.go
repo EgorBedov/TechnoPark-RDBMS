@@ -43,7 +43,8 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 	if err == pgx.ErrNoRows {
 		return http.StatusNotFound, nil
 	} else {
-		result.Pst = &tempPost
+		result.Pst = new(models.Post)
+		*result.Pst = tempPost
 	}
 
 	if query.Author {
@@ -64,7 +65,8 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 			log.Println("ERROR: Post Repo GetInfo")
 			return http.StatusInternalServerError, &result
 		} else {
-			result.Author = &tempAuthor
+			result.Author = new(models.User)
+			*result.Author = tempAuthor
 		}
 	}
 
@@ -90,7 +92,8 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 			log.Println("ERROR: Post Repo GetInfo")
 			return http.StatusInternalServerError, &result
 		} else {
-			result.Thrd = &tempThread
+			result.Thrd = new(models.Thread)
+			*result.Thrd = tempThread
 		}
 	}
 
@@ -113,14 +116,19 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 			log.Println("ERROR: Post Repo GetInfo")
 			return http.StatusInternalServerError, &result
 		} else {
-			result.Frm = &tempForum
+			result.Frm = new(models.Forum)
+			*result.Frm = tempForum
 		}
 	}
 
 	return http.StatusOK, &result
 }
 
-func (pr *postRepository) PostInfo(postId int, msg models.Message) (*models.Post, int) {
+func (pr *postRepository) PostInfo(pst *models.Post) int {
+	if pst.Message == "" {
+		return pr.emptyPostUpdate(pst)
+	}
+
 	sqlStatement := `
 		UPDATE post
 			SET message = $1
@@ -128,7 +136,7 @@ func (pr *postRepository) PostInfo(postId int, msg models.Message) (*models.Post
 		RETURNING id, parent, author, message, isedited, forum, thread_id, created;`
 
 	tempPost := models.Post{}
-	err := pr.db.QueryRow(sqlStatement, msg.Message, postId).Scan(
+	err := pr.db.QueryRow(sqlStatement, pst.Message, pst.Id).Scan(
 		&tempPost.Id,
 		&tempPost.Parent,
 		&tempPost.Author,
@@ -140,8 +148,33 @@ func (pr *postRepository) PostInfo(postId int, msg models.Message) (*models.Post
 
 	// Thread with that slug or id doesn't exist
 	if err == pgx.ErrNoRows {
-		return nil, http.StatusNotFound
+		return http.StatusNotFound
 	} else {
-		return &tempPost, http.StatusOK
+		*pst = tempPost
+		return http.StatusOK
+	}
+}
+
+func (pr *postRepository) emptyPostUpdate(pst *models.Post) int {
+	sqlStatement := `
+		SELECT id, author, message, forum, thread_id, created
+		FROM post
+		WHERE id = $1;`
+	rows := pr.db.QueryRow(sqlStatement, pst.Id)
+	tempPost := models.Post{}
+	err := rows.Scan(
+		&tempPost.Id,
+		&tempPost.Author,
+		&tempPost.Message,
+		&tempPost.Forum,
+		&tempPost.ThreadId,
+		&tempPost.Created)
+
+	// Post with that id doesn't exist
+	if err == pgx.ErrNoRows {
+		return http.StatusNotFound
+	} else {
+		*pst = tempPost
+		return http.StatusOK
 	}
 }
