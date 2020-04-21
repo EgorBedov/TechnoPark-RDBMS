@@ -5,7 +5,7 @@ import (
 	"egogoger/internal/pkg/network"
 	"egogoger/internal/pkg/user"
 	"encoding/json"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi"
 	"log"
 	"net/http"
 )
@@ -14,40 +14,46 @@ type UserHandler struct {
 	userUseCase user.UseCase
 }
 
-func NewUserHandler(fu user.UseCase, r *mux.Router) {
+func NewUserHandler(fu user.UseCase, r *chi.Mux) {
 	handler := &UserHandler{userUseCase:fu}
 
-	nickname := r.PathPrefix("/{nickname}").Subrouter()
-	nickname.HandleFunc("/create", 	handler.CreateUser)	.Methods("POST")
-	nickname.HandleFunc("/profile", 	handler.GetInfo)	.Methods("GET")
-	nickname.HandleFunc("/profile", 	handler.PostInfo)	.Methods("POST")
+	r.Route("/api/user/{nickname}", func(r chi.Router) {
+		r.Post("/create", 	handler.CreateUser)
+		r.Get("/profile", 	handler.GetInfo)
+		r.Post("/profile", 	handler.PostInfo)
+	})
 }
 
 func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	log.Println("/user/{nickname}/create POST working")
 
 	decoder := json.NewDecoder(r.Body)
-	var user models.User
-	if err := decoder.Decode(&user); err != nil {
+	var usr models.User
+	if err := decoder.Decode(&usr); err != nil {
 		network.GenErrorCode(w, r, "Error within parse json", http.StatusBadRequest)
 		return
 	}
-	user.NickName = mux.Vars(r)["nickname"]
+	usr.NickName = chi.URLParam(r, "nickname")
 
-	status := uh.userUseCase.CreateUser(&user)
+	users, status := uh.userUseCase.CreateUser(&usr)
+
 	log.Println("/user/{nickname}/create POST worked nicely")
-	network.Jsonify(w, user, status)
+	if users[0] == usr {
+		network.Jsonify(w, usr, status)
+	} else {
+		network.Jsonify(w, users, status)
+	}
 }
 
 func (uh *UserHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 	log.Println("/user/{nickname}/profile GET working")
 	usr := models.User{
-		NickName: mux.Vars(r)["nickname"],
+		NickName: chi.URLParam(r, "nickname"),
 	}
 	status := uh.userUseCase.GetInfo(&usr)
 
 	if status != http.StatusOK {
-		network.GenErrorCode(w, r, "Can't find user with nickname " + usr.NickName, status)
+		network.GenErrorCode(w, r, "Can't find user by nickname: " + usr.NickName, status)
 		return
 	}
 
@@ -64,12 +70,12 @@ func (uh *UserHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
 		network.GenErrorCode(w, r, "Error within parse json", http.StatusBadRequest)
 		return
 	}
-	usr.NickName = mux.Vars(r)["nickname"]
+	usr.NickName = chi.URLParam(r, "nickname")
 
-	status := uh.userUseCase.PostInfo(&usr)
+	status, message := uh.userUseCase.PostInfo(&usr)
 
 	if status != http.StatusOK {
-		network.GenErrorCode(w, r, "Can't find user with nickname " + usr.NickName, status)
+		network.GenErrorCode(w, r, message.Message, status)
 		return
 	}
 

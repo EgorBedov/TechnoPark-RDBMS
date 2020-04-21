@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi"
 	"net/http"
 	"strconv"
 	"strings"
@@ -34,7 +34,7 @@ type Message struct {
 }
 
 func DecodePostInfoQuery(r *http.Request) (*PostInfoQuery, error) {
-	postId, err := strconv.Atoi(mux.Vars(r)["id"])
+	postId, err := strconv.Atoi(chi.URLParam(r, "id"))
 	query := PostInfoQuery{
 		PostId: postId,
 		Author:	false,
@@ -60,9 +60,9 @@ func DecodePostInfoQuery(r *http.Request) (*PostInfoQuery, error) {
 func DecodePostQuery(r *http.Request) PostQuery {
 	params := r.URL.Query()
 	query := PostQuery{
-		SlugOrId: 	mux.Vars(r)["slug_or_id"],
+		SlugOrId: 	chi.URLParam(r, "slug_or_id"),
 		Limit: 	100,
-		Since: 	0,
+		Since: 	-1,
 		Sort:	"flat",
 		Desc:  	false,
 	}
@@ -85,7 +85,7 @@ func DecodePostQuery(r *http.Request) PostQuery {
 func DecodeQuery(r *http.Request) Query {
 	params := r.URL.Query()
 	query := Query{
-		Slug: mux.Vars(r)["slug"],
+		Slug: chi.URLParam(r, "slug"),
 		Limit: 100,
 		Since: "",
 		Desc:  false,

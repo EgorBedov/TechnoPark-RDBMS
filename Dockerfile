@@ -1,5 +1,9 @@
 FROM golang:1.13-stretch AS build
 
+ENV TZ=Europe/Moscow
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+
 WORKDIR /home/egogoger-rdbms
 COPY . .
 RUN go build -o /bin/egogoger-rdbms ./cmd/server/main.go
@@ -7,6 +11,10 @@ RUN go build -o /bin/egogoger-rdbms ./cmd/server/main.go
 FROM ubuntu:18.04 AS release
 
 MAINTAINER Egor A. Bedov
+
+ENV TZ=Europe/Moscow
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
 
 #
 # Установка postgresql
@@ -22,6 +30,7 @@ USER postgres
 RUN /etc/init.d/postgresql start &&\
     psql --command "CREATE USER docker WITH SUPERUSER PASSWORD 'docker';" &&\
     createdb -O docker docker &&\
+    psql docker -f /home/egogoger-rdbms/scripts/init.sql &&\
     /etc/init.d/postgresql stop
 
 # Adjust PostgreSQL configuration so that remote connections to the

@@ -17,6 +17,6 @@ func (pu *postUseCase) GetInfo(query *models.PostInfoQuery) (int, *models.PostIn
 	return pu.postRepo.GetInfo(query)
 }
 
-func (pu *postUseCase) PostInfo(postId int, msg models.Message) (*models.Post, int) {
-	return pu.postRepo.PostInfo(postId, msg)
+func (pu *postUseCase) PostInfo(pst *models.Post) int {
+	return pu.postRepo.PostInfo(pst)
 }

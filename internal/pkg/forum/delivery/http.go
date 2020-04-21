@@ -5,7 +5,7 @@ import (
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/network"
 	"encoding/json"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi"
 	"log"
 	"net/http"
 )
@@ -14,15 +14,18 @@ type ForumHandler struct {
 	forumUseCase forum.UseCase
 }
 
-func NewForumHandler(fu forum.UseCase, r *mux.Router) {
+func NewForumHandler(fu forum.UseCase, r *chi.Mux) {
 	handler := &ForumHandler{forumUseCase:fu}
 
-	r.HandleFunc("/create", 		handler.CreateForum)	.Methods("POST")
-	slug := r.PathPrefix("/{slug}").Subrouter()
-	slug.HandleFunc("/details", 	handler.GetInfo)		.Methods("GET")
-	slug.HandleFunc("/create", 	handler.CreateThread)	.Methods("POST")
-	slug.HandleFunc("/users", 	handler.GetUsers)		.Methods("GET")
-	slug.HandleFunc("/threads", 	handler.GetThreads)		.Methods("GET")
+	r.Route("/api/forum", func(r chi.Router) {
+		r.Post("/create", handler.CreateForum)
+		r.Route("/{slug}", func(r chi.Router) {
+			r.Get("/details", 	handler.GetInfo)
+			r.Post("/create", 	handler.CreateThread)
+			r.Get("/users", 	handler.GetUsers)
+			r.Get("/threads", 	handler.GetThreads)
+		})
+	})
 }
 
 func (fh *ForumHandler) CreateForum(w http.ResponseWriter, r *http.Request) {
@@ -35,9 +38,9 @@ func (fh *ForumHandler) CreateForum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status := fh.forumUseCase.CreateForum(&foroom)
+	status, message := fh.forumUseCase.CreateForum(&foroom)
 	if status == http.StatusNotFound {
-		network.GenErrorCode(w, r, "Can't find user with nickname " + foroom.Usr, status)
+		network.GenErrorCode(w, r, message.Message, status)
 		return
 	}
 
@@ -49,7 +52,7 @@ func (fh *ForumHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 	log.Println("/forum/{slug}/details GET working ")
 
 	frm := models.Forum{
-		Slug: mux.Vars(r)["slug"],
+		Slug: chi.URLParam(r, "slug"),
 	}
 	status := fh.forumUseCase.GetInfo(&frm)
 
@@ -63,7 +66,7 @@ func (fh *ForumHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (fh *ForumHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
-	log.Println("/forum/{slug}/details POST working ")
+	log.Println("/forum/{slug}/create POST working ")
 
 	decoder := json.NewDecoder(r.Body)
 	var thrd models.Thread
@@ -71,7 +74,8 @@ func (fh *ForumHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 		network.GenErrorCode(w, r, "Error within parse json", http.StatusBadRequest)
 		return
 	}
-	thrd.Forum = mux.Vars(r)["slug"]
+	thrd.Forum = chi.URLParam(r, "slug")
+	thrd.Created = thrd.Created.UTC()
 
 	status := fh.forumUseCase.CreateThread(&thrd)
 
@@ -80,7 +84,7 @@ func (fh *ForumHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/forum/{slug}/details POST worked nicely ")
+	log.Println("/forum/{slug}/create POST worked nicely ")
 	network.Jsonify(w, thrd, status)
 }
 
@@ -95,6 +99,10 @@ func (fh *ForumHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("/forum/{slug}/users GET worked nicely ")
+
+	if users == nil {
+		users = []models.User{}
+	}
 	network.Jsonify(w, users, status)
 }
 
@@ -109,5 +117,9 @@ func (fh *ForumHandler) GetThreads(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("/forum/{slug}/threads GET worked nicely ")
+
+	if threads == nil {
+		threads = []models.Thread{}
+	}
 	network.Jsonify(w, threads, status)
 }

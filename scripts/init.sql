@@ -1,5 +1,7 @@
 BEGIN;
 
+SET TIME ZONE 'Europe/London';
+
 CREATE TABLE IF NOT EXISTS usr
 (
     nickname    VARCHAR(128)        NOT NULL UNIQUE,

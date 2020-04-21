@@ -17,7 +17,8 @@ import (
 	userDelivery "egogoger/internal/pkg/user/delivery"
 	userRepository "egogoger/internal/pkg/user/repository"
 	userUseCase "egogoger/internal/pkg/user/usecase"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi"
+	//"github.com/go-chi/chi/middleware"
 	"log"
 	"net/http"
 )
@@ -43,36 +44,36 @@ func GetConfig() Settings {
 	}
 }
 
-func (ss *Settings) GetRouter() *mux.Router {
+func (ss *Settings) GetRouter() http.Handler {
 	conn := db.ConnectToDB()
 
-	r := mux.NewRouter()
-	api := r.PathPrefix("/api").Subrouter()
+	r := chi.NewRouter()
+	//r.Use(middleware.Logger)
 
 	forumDelivery.NewForumHandler(
 		forumUseCase.NewForumUseCase(
 			forumRepo.NewPgxForumRepository(conn)),
-		api.PathPrefix("/forum").Subrouter())
+		r)
 
 	postDelivery.NewPostHandler(
 		postUseCase.NewPostUseCase(
 			postRepo.NewPgxPostRepository(conn)),
-		api.PathPrefix("/post").Subrouter())
+		r)
 
 	serviceDelivery.NewServiceHandler(
 		serviceUseCase.NewServiceUseCase(
 			serviceRepo.NewPgxServiceRepository(conn)),
-		api.PathPrefix("/service").Subrouter())
+		r)
 
 	threadDelivery.NewThreadHandler(
 		threadUseCase.NewThreadUseCase(
 			threadRepo.NewPgxThreadRepository(conn)),
-		api.PathPrefix("/thread").Subrouter())
+		r)
 
 	userDelivery.NewUserHandler(
 		userUseCase.NewUserUseCase(
 			userRepository.NewPgxUserRepository(conn)),
-		api.PathPrefix("/user").Subrouter())
+		r)
 	log.Println("Handlers were set")
 	return r
 }

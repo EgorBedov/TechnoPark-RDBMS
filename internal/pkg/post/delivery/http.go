@@ -5,7 +5,7 @@ import (
 	"egogoger/internal/pkg/network"
 	"egogoger/internal/pkg/post"
 	"encoding/json"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi"
 	"log"
 	"net/http"
 	"strconv"
@@ -15,12 +15,13 @@ type PostHandler struct {
 	postUseCase post.UseCase
 }
 
-func NewPostHandler(fu post.UseCase, r *mux.Router) {
+func NewPostHandler(fu post.UseCase, r *chi.Mux) {
 	handler := &PostHandler{postUseCase:fu}
 
-	id := r.PathPrefix("/{id}").Subrouter()
-	id.HandleFunc("/details", 	handler.GetInfo)	.Methods("GET")
-	id.HandleFunc("/details", 	handler.PostInfo)	.Methods("POST")
+	r.Route("/api/post/{id}", func(r chi.Router) {
+		r.Get("/details", 	handler.GetInfo)
+		r.Post("/details", 	handler.PostInfo)
+	})
 }
 
 func (ph *PostHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
@@ -47,20 +48,21 @@ func (ph *PostHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
 	log.Println("/post/{id}/details POST working")
 
 	decoder := json.NewDecoder(r.Body)
-	var msg models.Message
-	if err := decoder.Decode(&msg); err != nil {
+	var pst models.Post
+	if err := decoder.Decode(&pst); err != nil {
 		network.GenErrorCode(w, r, "Error within parse json", http.StatusBadRequest)
 		return
 	}
 
-	idString := mux.Vars(r)["id"]
-	id, err := strconv.Atoi(idString)
+	idString := chi.URLParam(r, "id")
+	var err error
+	pst.Id, err = strconv.Atoi(idString)
 	if err != nil {
 		network.GenErrorCode(w, r, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
-	pst, status := ph.postUseCase.PostInfo(id, msg)
+	status := ph.postUseCase.PostInfo(&pst)
 
 	if status == http.StatusNotFound {
 		network.GenErrorCode(w, r, "Can't find post with id " + idString, status)

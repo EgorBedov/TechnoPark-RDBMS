@@ -5,7 +5,7 @@ import (
 	"egogoger/internal/pkg/network"
 	"egogoger/internal/pkg/thread"
 	"encoding/json"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi"
 	"log"
 	"net/http"
 )
@@ -14,15 +14,16 @@ type ThreadHandler struct {
 	threadUseCase thread.UseCase
 }
 
-func NewThreadHandler(fu thread.UseCase, r *mux.Router) {
+func NewThreadHandler(fu thread.UseCase, r *chi.Mux) {
 	handler := &ThreadHandler{threadUseCase:fu}
 
-	slugOrId := r.PathPrefix("/{slug_or_id}").Subrouter()
-	slugOrId.HandleFunc("/create", 	handler.CreatePosts)	.Methods("POST")
-	slugOrId.HandleFunc("/details", 	handler.GetInfo)		.Methods("GET")
-	slugOrId.HandleFunc("/details", 	handler.UpdateThread)	.Methods("POST")
-	slugOrId.HandleFunc("/posts", 	handler.GetPosts)		.Methods("GET")
-	slugOrId.HandleFunc("/vote", 		handler.Vote)			.Methods("POST")
+	r.Route("/api/thread/{slug_or_id}", func(r chi.Router) {
+		r.Post("/create", 	handler.CreatePosts)
+		r.Get("/details", 	handler.GetInfo)
+		r.Post("/details", 	handler.UpdateThread)
+		r.Get("/posts", 	handler.GetPosts)
+		r.Post("/vote", 	handler.Vote)
+	})
 }
 
 func (th *ThreadHandler) CreatePosts(w http.ResponseWriter, r *http.Request) {
@@ -34,10 +35,23 @@ func (th *ThreadHandler) CreatePosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	slugOrId := mux.Vars(r)["slug_or_id"]
-	status := th.threadUseCase.CreatePosts(posts, slugOrId)
+	threadId, err := th.threadUseCase.GetThreadIdBySlugOrId(chi.URLParam(r, "slug_or_id"))
+	if err != nil {
+		network.Jsonify(w, models.Post{}, http.StatusNotFound)
+		return
+	}
 
-	if status != http.StatusOK {
+	if len(posts) == 0 {
+		log.Println("/thread/{slug_or_id}/create POST finished with empty ")
+		network.Jsonify(w, posts, http.StatusCreated)
+		return
+	}
+
+	slugOrId := chi.URLParam(r, "slug_or_id")
+	status := th.threadUseCase.CreatePosts(posts, threadId)
+
+	if status != http.StatusCreated {
+		log.Println("/thread/{slug_or_id}/create POST finished with error ", status)
 		network.GenErrorCode(w, r, "Can't find parent message or thread with slug_or_id " + slugOrId, status)
 		return
 	}
@@ -49,7 +63,7 @@ func (th *ThreadHandler) CreatePosts(w http.ResponseWriter, r *http.Request) {
 func (th *ThreadHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 	log.Println("/thread/{slug_or_id}/details GET working")
 
-	slugOrId := mux.Vars(r)["slug_or_id"]
+	slugOrId := chi.URLParam(r, "slug_or_id")
 	thrd := models.Thread{}
 	status := th.threadUseCase.GetInfo(&thrd, slugOrId)
 
@@ -71,12 +85,12 @@ func (th *ThreadHandler) UpdateThread(w http.ResponseWriter, r *http.Request) {
 		network.GenErrorCode(w, r, err.Error(), http.StatusBadRequest)
 		return
 	}
-	slugOrId := mux.Vars(r)["slug_or_id"]
+	slugOrId := chi.URLParam(r, "slug_or_id")
 
 	status := th.threadUseCase.UpdateThread(&thrd, slugOrId)
 
 	if status == http.StatusNotFound {
-		network.GenErrorCode(w, r, "Can't find thread with slug_or_id " + thrd.Slug, status)
+		network.GenErrorCode(w, r, "Can't find thread with slug_or_id " + slugOrId, status)
 		return
 	}
 
@@ -95,6 +109,10 @@ func (th *ThreadHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("/thread/{slug_or_id}/create GET worked nicely")
+
+	if posts == nil {
+		posts = []models.Post{}
+	}
 	network.Jsonify(w, posts, status)
 }
 
@@ -102,7 +120,7 @@ func (th *ThreadHandler) Vote(w http.ResponseWriter, r *http.Request) {
 	log.Println("/thread/{slug_or_id}/vote POST working")
 
 	// Get info about thread
-	slugOrId := mux.Vars(r)["slug_or_id"]
+	slugOrId := chi.URLParam(r, "slug_or_id")
 	thrd := models.Thread{}
 	status := th.threadUseCase.GetInfo(&thrd, slugOrId)
 	if status == http.StatusNotFound {
@@ -120,14 +138,14 @@ func (th *ThreadHandler) Vote(w http.ResponseWriter, r *http.Request) {
 
 	// Send vote
 	vote.ThreadId = thrd.Id
-	status = th.threadUseCase.Vote(&vote)
+	status, thrd.Votes = th.threadUseCase.Vote(&vote)
 	if status != http.StatusOK {
 		network.GenErrorCode(w, r, "Vote failed", status)
 		return
 	}
 
-	// Change thrd and return
-	thrd.Votes += vote.Voice
 	log.Println("/thread/{slug_or_id}/vote POST worked nicely ")
 	network.Jsonify(w, thrd, status)
 }
+
+
