@@ -2,7 +2,7 @@ FROM golang:1.13-stretch AS build
 
 WORKDIR /home/egogoger-rdbms
 COPY . .
-RUN go build -o bin/egogoger-rdbms ./cmd/server/main.go
+RUN go build -o /bin/egogoger-rdbms ./cmd/server/main.go
 
 
 FROM ubuntu:18.04

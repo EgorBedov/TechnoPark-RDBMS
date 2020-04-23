@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"github.com/gosimple/slug"
 	"github.com/jackc/pgx"
-	"log"
-
 	//"log"
 	"net/http"
 	"time"
