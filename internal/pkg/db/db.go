@@ -2,7 +2,6 @@ package db
 
 import (
 	"github.com/jackc/pgx"
-	"log"
 	"sync"
 )
 
@@ -39,6 +38,6 @@ func ConnectToDB() *pgx.ConnPool {
 			db = dbase
 		}
 	})
-	log.Println("Connected to db: name=", dbname, ", user=", user, ", port=", port)
+	//log.Println("Connected to db: name=", dbname, ", user=", user, ", port=", port)
 	return db
 }

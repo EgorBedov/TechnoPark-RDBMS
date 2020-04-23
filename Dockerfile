@@ -2,9 +2,8 @@ FROM golang:1.13-stretch AS build
 
 WORKDIR /home/egogoger-rdbms
 COPY . .
-RUN go build -o /bin/egogoger-rdbms ./cmd/server/main.go
+RUN go build -o bin/egogoger-rdbms ./cmd/server/main.go
 
-# Until this all okay
 
 FROM ubuntu:18.04
 MAINTAINER Egor A. Bedov

@@ -5,7 +5,6 @@ import (
 	"egogoger/internal/pkg/user"
 	"fmt"
 	"github.com/jackc/pgx"
-	"log"
 	"net/http"
 )
 
@@ -52,13 +51,13 @@ func (ur *userRepository) CreateUser(usr *models.User) ([]models.User, int) {
 
 	// Error during execution
 	if err != nil {
-		log.Println("ERROR: User Repo CreateUser")
+		//log.Println("ERROR: User Repo CreateUser")
 		return nil, http.StatusBadRequest
 	}
 
 	// No insertion
 	if cTag.RowsAffected() != 1 {
-		log.Println("ERROR: User Repo GetUsers")
+		//log.Println("ERROR: User Repo GetUsers")
 		return nil, http.StatusInternalServerError
 	}
 

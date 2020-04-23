@@ -7,6 +7,8 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/jackc/pgx"
 	"log"
+
+	//"log"
 	"net/http"
 	"time"
 )
@@ -185,7 +187,7 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 			&tempUser.About,
 			&tempUser.Email)
 		if err != nil {
-			log.Println("ERROR: Forum Repo GetUsers")
+			//log.Println("ERROR: Forum Repo GetUsers")
 			return nil, http.StatusInternalServerError
 		}
 		users = append(users, tempUser)
@@ -223,7 +225,7 @@ func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int)
 	}
 	rows, err := fr.db.Query(sqlStatement, forumId, query.Limit)
 	if err != nil {
-		log.Println("ERROR: Forum Repo GetThreads")
+		//log.Println("ERROR: Forum Repo GetThreads")
 		return nil, http.StatusBadRequest
 	}
 
@@ -240,7 +242,7 @@ func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int)
 			&tempThread.Slug,
 			&tempThread.Created)
 		if err != nil {
-			log.Println("ERROR: Forum Repo GetThreads")
+			//log.Println("ERROR: Forum Repo GetThreads")
 			return nil, http.StatusInternalServerError
 		}
 		threads = append(threads, tempThread)

@@ -4,7 +4,7 @@ import (
 	"egogoger/internal/pkg/network"
 	"egogoger/internal/pkg/service"
 	"github.com/go-chi/chi"
-	"log"
+	//"log"
 	"net/http"
 )
 
@@ -22,7 +22,7 @@ func NewServiceHandler(fu service.UseCase, r *chi.Mux) {
 }
 
 func (sh *ServiceHandler) TruncateAll(w http.ResponseWriter, r *http.Request) {
-	log.Println("/service/status working")
+	//log.Println("/service/status working")
 
 	status := sh.serviceUseCase.TruncateAll()
 
@@ -31,12 +31,12 @@ func (sh *ServiceHandler) TruncateAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/service/clear worked nicely")
+	//log.Println("/service/clear worked nicely")
 	network.Jsonify(w, http.StatusText(status), status)
 }
 
 func (sh *ServiceHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
-	log.Println("/service/status working")
+	//log.Println("/service/status working")
 
 	summary, status := sh.serviceUseCase.GetInfo()
 
@@ -45,6 +45,6 @@ func (sh *ServiceHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/service/status worked nicely")
+	//log.Println("/service/status worked nicely")
 	network.Jsonify(w, &summary, status)
 }

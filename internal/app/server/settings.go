@@ -19,9 +19,8 @@ import (
 	userUseCase "egogoger/internal/pkg/user/usecase"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
-
-	//"github.com/go-chi/chi/middleware"
 	"log"
+
 	"net/http"
 )
 
@@ -42,7 +41,7 @@ type Settings struct {
 func GetConfig() Settings {
 	return Settings{
 		Port:   5000,
-		Ip:     "127.0.0.1",
+		Ip:     "0.0.0.0",
 	}
 }
 

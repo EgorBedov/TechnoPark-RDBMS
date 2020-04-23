@@ -6,7 +6,7 @@ import (
 	"egogoger/internal/pkg/user"
 	"encoding/json"
 	"github.com/go-chi/chi"
-	"log"
+	//"log"
 	"net/http"
 )
 
@@ -25,7 +25,7 @@ func NewUserHandler(fu user.UseCase, r *chi.Mux) {
 }
 
 func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	log.Println("/user/{nickname}/create POST working")
+	//log.Println("/user/{nickname}/create POST working")
 
 	decoder := json.NewDecoder(r.Body)
 	var usr models.User
@@ -37,7 +37,7 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	users, status := uh.userUseCase.CreateUser(&usr)
 
-	log.Println("/user/{nickname}/create POST worked nicely")
+	//log.Println("/user/{nickname}/create POST worked nicely")
 	if users[0] == usr {
 		network.Jsonify(w, usr, status)
 	} else {
@@ -46,7 +46,7 @@ func (uh *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (uh *UserHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
-	log.Println("/user/{nickname}/profile GET working")
+	//log.Println("/user/{nickname}/profile GET working")
 	usr := models.User{
 		NickName: chi.URLParam(r, "nickname"),
 	}
@@ -57,12 +57,12 @@ func (uh *UserHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/user/{nickname}/profile GET worked nicely")
+	//log.Println("/user/{nickname}/profile GET worked nicely")
 	network.Jsonify(w, usr, status)
 }
 
 func (uh *UserHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
-	log.Println("/user/{nickname}/profile POST working")
+	//log.Println("/user/{nickname}/profile POST working")
 
 	decoder := json.NewDecoder(r.Body)
 	var usr models.User
@@ -79,6 +79,6 @@ func (uh *UserHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/user/{nickname}/profile POST worked nicely")
+	//log.Println("/user/{nickname}/profile POST worked nicely")
 	network.Jsonify(w, usr, status)
 }

@@ -6,7 +6,7 @@ import (
 	"egogoger/internal/pkg/post"
 	"encoding/json"
 	"github.com/go-chi/chi"
-	"log"
+	//"log"
 	"net/http"
 	"strconv"
 )
@@ -25,7 +25,7 @@ func NewPostHandler(fu post.UseCase, r *chi.Mux) {
 }
 
 func (ph *PostHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
-	log.Println("/post/{id}/details GET working")
+	//log.Println("/post/{id}/details GET working")
 
 	postInfoQuery, err := models.DecodePostInfoQuery(r)
 	if err != nil {
@@ -40,12 +40,12 @@ func (ph *PostHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/post/{id}/details GET worked nicely")
+	//log.Println("/post/{id}/details GET worked nicely")
 	network.Jsonify(w, &postInfo, status)
 }
 
 func (ph *PostHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
-	log.Println("/post/{id}/details POST working")
+	//log.Println("/post/{id}/details POST working")
 
 	decoder := json.NewDecoder(r.Body)
 	var pst models.Post
@@ -69,6 +69,6 @@ func (ph *PostHandler) PostInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/post/{id}/details POST worked nicely")
+	//log.Println("/post/{id}/details POST worked nicely")
 	network.Jsonify(w, pst, status)
 }

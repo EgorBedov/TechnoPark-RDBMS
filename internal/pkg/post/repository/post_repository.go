@@ -4,7 +4,7 @@ import (
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/post"
 	"github.com/jackc/pgx"
-	"log"
+	//"log"
 	"net/http"
 )
 
@@ -62,7 +62,7 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 
 		// Forum with that nickname doesn't exist
 		if err == pgx.ErrNoRows {
-			log.Println("ERROR: Post Repo GetInfo")
+			//log.Println("ERROR: Post Repo GetInfo")
 			return http.StatusInternalServerError, &result
 		} else {
 			result.Author = new(models.User)
@@ -89,7 +89,7 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 
 		// Forum with that nickname doesn't exist
 		if err == pgx.ErrNoRows {
-			log.Println("ERROR: Post Repo GetInfo")
+			//log.Println("ERROR: Post Repo GetInfo")
 			return http.StatusInternalServerError, &result
 		} else {
 			result.Thrd = new(models.Thread)
@@ -113,7 +113,7 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 
 		// Forum with that nickname doesn't exist
 		if err == pgx.ErrNoRows {
-			log.Println("ERROR: Post Repo GetInfo")
+			//log.Println("ERROR: Post Repo GetInfo")
 			return http.StatusInternalServerError, &result
 		} else {
 			result.Frm = new(models.Forum)

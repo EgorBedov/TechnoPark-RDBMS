@@ -5,7 +5,7 @@ import (
 	"egogoger/internal/pkg/thread"
 	"fmt"
 	"github.com/jackc/pgx"
-	"log"
+	//"log"
 	"net/http"
 	"strconv"
 )
@@ -171,7 +171,7 @@ func (tr *threadRepository) Vote(vote *models.Vote) (int, int) {
 	oldVoice := 0
 	err := tr.db.QueryRow(sqlStatement, vote.Voice, vote.ThreadId, vote.Nickname).Scan(&oldVoice)
 	if err != nil {
-		log.Println("ERROR: Thread Repo Vote (not critical)")
+		//log.Println("ERROR: Thread Repo Vote (not critical)")
 		return http.StatusNotFound, 0
 	}
 
@@ -185,7 +185,7 @@ func (tr *threadRepository) Vote(vote *models.Vote) (int, int) {
 	var newVotes int
 	err = tr.db.QueryRow(sqlStatement, oldVoice, vote.Voice, vote.ThreadId).Scan(&newVotes)
 	if err != nil {
-		log.Println("ERROR: Thread Repo Vote")
+		//log.Println("ERROR: Thread Repo Vote")
 		return http.StatusInternalServerError, 0
 	}
 
@@ -211,7 +211,7 @@ func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) 
 	}
 	rows, err := tr.db.Query(sqlStatement, threadId, query.Since, query.Limit)
 	if err != nil {
-		log.Println("ERROR: Thread Repo GetPosts")
+		//log.Println("ERROR: Thread Repo GetPosts")
 		return nil, http.StatusBadRequest
 	}
 
@@ -228,7 +228,7 @@ func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) 
 			&tempPost.ThreadId,
 			&tempPost.Created)
 		if err != nil {
-			log.Println("ERROR: Thread Repo GetPosts")
+			//log.Println("ERROR: Thread Repo GetPosts")
 			return nil, http.StatusInternalServerError
 		}
 		posts = append(posts, tempPost)
@@ -274,8 +274,7 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 			&tempPost.Message,
 			&tempPost.ThreadId)
 		if err != nil {
-			log.Println("ERROR tree 2", err)
-			fmt.Println(rows)
+			//log.Println("ERROR tree 2", err)
 			return nil, http.StatusInternalServerError
 		}
 		parentPosts = append(parentPosts, tempPost)

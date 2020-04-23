@@ -6,7 +6,7 @@ import (
 	"egogoger/internal/pkg/network"
 	"encoding/json"
 	"github.com/go-chi/chi"
-	"log"
+	//"log"
 	"net/http"
 )
 
@@ -29,7 +29,7 @@ func NewForumHandler(fu forum.UseCase, r *chi.Mux) {
 }
 
 func (fh *ForumHandler) CreateForum(w http.ResponseWriter, r *http.Request) {
-	log.Println("/forum/create working ")
+	//log.Println("/forum/create working ")
 
 	decoder := json.NewDecoder(r.Body)
 	var foroom models.Forum
@@ -44,12 +44,12 @@ func (fh *ForumHandler) CreateForum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/forum/create worked nicely ")
+	//log.Println("/forum/create worked nicely ")
 	network.Jsonify(w, foroom, status)
 }
 
 func (fh *ForumHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
-	log.Println("/forum/{slug}/details GET working ")
+	//log.Println("/forum/{slug}/details GET working ")
 
 	frm := models.Forum{
 		Slug: chi.URLParam(r, "slug"),
@@ -61,12 +61,12 @@ func (fh *ForumHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/forum/{slug}/details GET worked nicely ")
+	//log.Println("/forum/{slug}/details GET worked nicely ")
 	network.Jsonify(w, frm, status)
 }
 
 func (fh *ForumHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
-	log.Println("/forum/{slug}/create POST working ")
+	//log.Println("/forum/{slug}/create POST working ")
 
 	decoder := json.NewDecoder(r.Body)
 	var thrd models.Thread
@@ -84,12 +84,12 @@ func (fh *ForumHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/forum/{slug}/create POST worked nicely ")
+	//log.Println("/forum/{slug}/create POST worked nicely ")
 	network.Jsonify(w, thrd, status)
 }
 
 func (fh *ForumHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
-	log.Println("/forum/{slug}/users GET working")
+	//log.Println("/forum/{slug}/users GET working")
 
 	query := models.DecodeQuery(r)
 	users, status := fh.forumUseCase.GetUsers(query)
@@ -98,7 +98,7 @@ func (fh *ForumHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/forum/{slug}/users GET worked nicely ")
+	//log.Println("/forum/{slug}/users GET worked nicely ")
 
 	if users == nil {
 		users = []models.User{}
@@ -107,7 +107,7 @@ func (fh *ForumHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (fh *ForumHandler) GetThreads(w http.ResponseWriter, r *http.Request) {
-	log.Println("/forum/{slug}/threads GET working")
+	//log.Println("/forum/{slug}/threads GET working")
 
 	query := models.DecodeQuery(r)
 	threads, status := fh.forumUseCase.GetThreads(query)
@@ -116,7 +116,7 @@ func (fh *ForumHandler) GetThreads(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("/forum/{slug}/threads GET worked nicely ")
+	//log.Println("/forum/{slug}/threads GET worked nicely ")
 
 	if threads == nil {
 		threads = []models.Thread{}
