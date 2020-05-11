@@ -43,6 +43,7 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int) int {
 			&posts[iii].Forum,
 			&posts[iii].Id)
 		if err != nil {
+			fmt.Println(err)
 			return http.StatusNotFound
 		}
 		posts[iii].ThreadId = threadId
@@ -77,6 +78,7 @@ func (tr *threadRepository) GetInfo(thrd *models.Thread, slugOrId string) int {
 
 	// User with that nickname doesn't exist
 	if err == pgx.ErrNoRows {
+		fmt.Println(err)
 		return http.StatusNotFound
 	} else {
 		return http.StatusOK
@@ -121,6 +123,7 @@ func (tr *threadRepository) UpdateThread(thrd *models.Thread, slugOrId string) i
 
 	// Thread with that slug or id doesn't exist
 	if err == pgx.ErrNoRows {
+		fmt.Println(err)
 		return http.StatusNotFound
 	} else {
 		return http.StatusOK
@@ -171,7 +174,7 @@ func (tr *threadRepository) Vote(vote *models.Vote) (int, int) {
 	oldVoice := 0
 	err := tr.db.QueryRow(sqlStatement, vote.Voice, vote.ThreadId, vote.Nickname).Scan(&oldVoice)
 	if err != nil {
-		//log.Println("ERROR: Thread Repo Vote (not critical)")
+		fmt.Println(err)
 		return http.StatusNotFound, 0
 	}
 

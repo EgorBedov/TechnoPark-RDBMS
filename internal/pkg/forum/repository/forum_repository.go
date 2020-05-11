@@ -4,11 +4,9 @@ import (
 	"egogoger/internal/pkg/forum"
 	"egogoger/internal/pkg/models"
 	"fmt"
-	"github.com/gosimple/slug"
 	"github.com/jackc/pgx"
 	//"log"
 	"net/http"
-	"time"
 )
 
 type forumRepository struct {
@@ -52,6 +50,7 @@ func (fr *forumRepository) CreateForum(frm *models.Forum) (int, *models.Message)
 		&frm.Title,
 		&frm.Usr)
 	if err != nil {
+		fmt.Println(err)
 		return http.StatusNotFound, &models.Message{Message:"Can't find user with nickname: " + *frm.Usr}
 	} else {
 		return http.StatusCreated, nil
@@ -73,6 +72,7 @@ func (fr *forumRepository) GetInfo(frm *models.Forum) int {
 
 	// User with that nickname doesn't exist
 	if err == pgx.ErrNoRows {
+		fmt.Println(err)
 		return http.StatusNotFound
 	} else {
 		return http.StatusOK
@@ -82,9 +82,12 @@ func (fr *forumRepository) GetInfo(frm *models.Forum) int {
 func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 	if thrd.Slug != nil {
 		sqlStatement := `
-			SELECT id, title, author, forum, message, votes, slug, created
-				FROM thread
-				WHERE LOWER(slug) = LOWER($1);`
+			SELECT
+				id, title, author, forum, message, votes, slug, created
+			FROM
+				thread
+			WHERE
+				LOWER(slug) = LOWER($1);`
 		rows := fr.db.QueryRow(sqlStatement, thrd.Slug)
 		tempThread := models.Thread{}
 		err := rows.Scan(
@@ -104,30 +107,21 @@ func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 		}
 	}
 
-	noSlug := false
-	if thrd.Slug == nil || len(*thrd.Slug) == 0 {
-		thrd.Slug = new(string)
-		*thrd.Slug = slug.Make(thrd.Title + time.Now().String())
-		noSlug = true
-	}
-
 	// First entry of such combination
 	sqlStatement := `
 		INSERT INTO thread (title, author,       forum,      message, slug, created, author_id, forum_id)
 			SELECT 			$1,    usr.nickname, forum.slug, $2,      $3,   $4,      usr.id,    forum.id
 			FROM forum
 			FULL OUTER JOIN usr
-			ON usr.nickname = $5
+			ON LOWER(usr.nickname) = LOWER($5)
 			WHERE LOWER(forum.slug) = LOWER($6)
 		RETURNING id, forum;`
 	row := fr.db.QueryRow(sqlStatement, thrd.Title, thrd.Message, thrd.Slug, thrd.Created, thrd.Author, thrd.Forum)
 	err := row.Scan(
 		&thrd.Id,
 		&thrd.Forum)
-	if noSlug {
-		thrd.Slug = nil
-	}
 	if err != nil {
+		fmt.Println(err)
 		return http.StatusNotFound			// User not found
 	} else {
 		return http.StatusCreated			// All okay

@@ -3,6 +3,7 @@ package repository
 import (
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/post"
+	"fmt"
 	"github.com/jackc/pgx"
 	//"log"
 	"net/http"
@@ -41,6 +42,7 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 
 	// Post with that id doesn't exist
 	if err == pgx.ErrNoRows {
+		fmt.Println(err)
 		return http.StatusNotFound, nil
 	} else {
 		result.Pst = new(models.Post)
@@ -148,6 +150,7 @@ func (pr *postRepository) PostInfo(pst *models.Post) int {
 
 	// Thread with that slug or id doesn't exist
 	if err == pgx.ErrNoRows {
+		fmt.Println(err)
 		return http.StatusNotFound
 	} else {
 		*pst = tempPost
@@ -172,6 +175,7 @@ func (pr *postRepository) emptyPostUpdate(pst *models.Post) int {
 
 	// Post with that id doesn't exist
 	if err == pgx.ErrNoRows {
+		fmt.Println(err)
 		return http.StatusNotFound
 	} else {
 		*pst = tempPost

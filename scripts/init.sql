@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS usr
     id          SERIAL              PRIMARY KEY
 );
 
+CREATE INDEX ON usr USING HASH ((LOWER(nickname)));
+
 CREATE TABLE IF NOT EXISTS forum
 (
     id          SERIAL              PRIMARY KEY,
@@ -24,6 +26,8 @@ CREATE TABLE IF NOT EXISTS forum
     usr_id      INTEGER             NOT NULL REFERENCES usr (id) ON DELETE CASCADE
 );
 
+CREATE INDEX ON forum USING HASH ((LOWER(slug)));
+
 CREATE TABLE IF NOT EXISTS thread
 (
     id          SERIAL              PRIMARY KEY,
@@ -32,12 +36,15 @@ CREATE TABLE IF NOT EXISTS thread
     forum       VARCHAR(128)        REFERENCES forum (slug) ON DELETE CASCADE,
     message     TEXT                DEFAULT NULL,
     votes       INTEGER             DEFAULT 0,
-    slug        VARCHAR(128)        NOT NULL UNIQUE,
+    slug        VARCHAR(256)        UNIQUE,
     created     TIMESTAMP           DEFAULT current_timestamp,
 
     author_id   INTEGER             NOT NULL REFERENCES usr (id) ON DELETE CASCADE,
     forum_id    INTEGER             NOT NULL REFERENCES forum (id) ON DELETE CASCADE
 );
+
+CREATE INDEX ON thread USING HASH ((LOWER(slug)));
+CREATE INDEX ON thread (created);
 
 CREATE TABLE IF NOT EXISTS post
 (
@@ -55,6 +62,9 @@ CREATE TABLE IF NOT EXISTS post
     CONSTRAINT unique_post UNIQUE (id, thread_id)
 );
 
+CREATE INDEX ON post USING HASH ((LOWER(forum)));
+CREATE INDEX ON post (thread_id);
+
 CREATE TABLE IF NOT EXISTS vote
 (
     nickname    VARCHAR(128)        NOT NULL REFERENCES usr (nickname) ON DELETE CASCADE,
@@ -65,7 +75,7 @@ CREATE TABLE IF NOT EXISTS vote
     CONSTRAINT unique_vote UNIQUE (usr_id, thread_id)
 );
 
-
+CREATE INDEX ON vote (usr_id);
 
 
 -- Table that stores max id from every table
