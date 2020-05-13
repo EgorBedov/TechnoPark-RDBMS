@@ -29,7 +29,7 @@ func (tu *threadUseCase) GetPosts(query *models.PostQuery) ([]models.Post, int) 
 	return tu.threadRepo.GetPosts(query)
 }
 
-func (tu *threadUseCase) Vote(vote *models.Vote) (int, int) {
+func (tu *threadUseCase) Vote(vote *models.Vote) (*models.Thread, models.Message) {
 	return tu.threadRepo.Vote(vote)
 }
 

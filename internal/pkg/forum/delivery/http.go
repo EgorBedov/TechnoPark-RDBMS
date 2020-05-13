@@ -29,8 +29,6 @@ func NewForumHandler(fu forum.UseCase, r *chi.Mux) {
 }
 
 func (fh *ForumHandler) CreateForum(w http.ResponseWriter, r *http.Request) {
-	//log.Println("/forum/create working ")
-
 	decoder := json.NewDecoder(r.Body)
 	var foroom models.Forum
 	if err := decoder.Decode(&foroom); err != nil {
@@ -38,14 +36,12 @@ func (fh *ForumHandler) CreateForum(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	status, message := fh.forumUseCase.CreateForum(&foroom)
-	if status == http.StatusNotFound {
-		network.GenErrorCode(w, r, message.Message, status)
+	message := fh.forumUseCase.CreateForum(&foroom)
+	if message.Status == http.StatusNotFound {
+		network.GenErrorCode(w, r, message.Message, message.Status)
 		return
 	}
-
-	//log.Println("/forum/create worked nicely ")
-	network.Jsonify(w, foroom, status)
+	network.Jsonify(w, foroom, message.Status)
 }
 
 func (fh *ForumHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
@@ -99,16 +95,12 @@ func (fh *ForumHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (fh *ForumHandler) GetThreads(w http.ResponseWriter, r *http.Request) {
-	//log.Println("/forum/{slug}/threads GET working")
-
 	query := models.DecodeQuery(r)
 	threads, status := fh.forumUseCase.GetThreads(query)
 	if status == http.StatusNotFound {
 		network.GenErrorCode(w, r, "Can't find forum with slug " + query.Slug, status)
 		return
 	}
-
-	//log.Println("/forum/{slug}/threads GET worked nicely ")
 
 	if threads == nil {
 		threads = []models.Thread{}

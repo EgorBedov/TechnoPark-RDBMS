@@ -72,6 +72,5 @@ func (ss *Settings) GetRouter() http.Handler {
 		userUseCase.NewUserUseCase(
 			userRepository.NewPgxUserRepository(conn)),
 		r)
-	//log.Println("Handlers were set")
 	return r
 }

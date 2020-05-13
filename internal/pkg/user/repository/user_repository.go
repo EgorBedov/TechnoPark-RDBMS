@@ -19,9 +19,14 @@ func NewPgxUserRepository(db *pgx.ConnPool) user.Repository {
 func (ur *userRepository) CreateUser(usr *models.User) ([]models.User, int) {
 	var usrs []models.User
 	sqlStatement := `
-		SELECT nickname, fullname, about, email
-		FROM usr
-		WHERE LOWER(nickname) = LOWER($1) OR LOWER(email) = LOWER($2);`
+		SELECT
+			nickname, fullname, about, email
+		FROM
+			usr
+		WHERE
+			nickname = $1
+				OR
+			email = $2;`
 	rows, err := ur.db.Query(sqlStatement, usr.NickName, usr.Email)
 	if err != nil {
 		return nil, http.StatusInternalServerError
@@ -68,9 +73,12 @@ func (ur *userRepository) CreateUser(usr *models.User) ([]models.User, int) {
 
 func (ur *userRepository) GetInfo(user *models.User) int {
 	sqlStatement := `
-		SELECT nickname, fullname, about, email
-		FROM usr
-		WHERE LOWER(nickname) = LOWER($1);`
+		SELECT
+			nickname, fullname, about, email
+		FROM
+			usr
+		WHERE
+			nickname = $1;`
 	rows := ur.db.QueryRow(sqlStatement, user.NickName)
 	err := rows.Scan(
 		&user.NickName,
@@ -91,9 +99,12 @@ func (ur *userRepository) PostInfo(user *models.User) (int, *models.Message) {
 	if len(user.Email) != 0 {
 		var nickName string
 		sqlStatement := `
-		SELECT nickname
-			FROM usr
-			WHERE LOWER(email) = LOWER($1);`
+		SELECT
+			nickname
+		FROM
+			usr
+		WHERE
+			email = $1;`
 		err := ur.db.QueryRow(sqlStatement, user.Email).Scan(&nickName)
 		if err == nil {
 			return http.StatusConflict, &models.Message{Message:"This email is already registered by user: " + nickName}
@@ -101,8 +112,10 @@ func (ur *userRepository) PostInfo(user *models.User) (int, *models.Message) {
 	}
 
 	sqlStatement := `
-		UPDATE usr
-		SET nickname = $1`
+		UPDATE
+			usr
+		SET
+			nickname = $1`
 
 	if len(user.FullName) != 0 {
 		sqlStatement += fmt.Sprintf(", fullname = '%v'", user.FullName)
@@ -115,8 +128,10 @@ func (ur *userRepository) PostInfo(user *models.User) (int, *models.Message) {
 	}
 
 	sqlStatement += `
-		WHERE LOWER(nickname) = LOWER($1)
-		RETURNING nickname, fullname, about, email;`
+		WHERE
+			nickname = $1
+		RETURNING
+			nickname, fullname, about, email;`
 
 	err := ur.db.QueryRow(sqlStatement, user.NickName).Scan(
 		&user.NickName,

@@ -4,7 +4,11 @@ import (
 	"egogoger/internal/pkg/forum"
 	"egogoger/internal/pkg/models"
 	"fmt"
+	"github.com/gosimple/slug"
 	"github.com/jackc/pgx"
+	"log"
+	"time"
+
 	//"log"
 	"net/http"
 )
@@ -17,11 +21,14 @@ func NewPgxForumRepository(db *pgx.ConnPool) forum.Repository {
 	return &forumRepository{db: db}
 }
 
-func (fr *forumRepository) CreateForum(frm *models.Forum) (int, *models.Message) {
+func (fr *forumRepository) CreateForum(frm *models.Forum) models.Message {
 	sqlStatement := `
-		SELECT title, usr, slug, posts, threads
-		FROM forum
-		WHERE LOWER(slug) = LOWER($1);`
+		SELECT
+			title, usr, slug, posts, threads
+		FROM
+			forum
+		WHERE
+			slug = $1;`
 	rows := fr.db.QueryRow(sqlStatement, frm.Slug)
 	tempForum := models.Forum{}
 	err := rows.Scan(
@@ -34,34 +41,49 @@ func (fr *forumRepository) CreateForum(frm *models.Forum) (int, *models.Message)
 	// Forum already exists
 	if err != pgx.ErrNoRows {
 		*frm = tempForum
-		return http.StatusConflict, &models.Message{Message:"Forum with that slug already exists"}
+		return models.Message{
+			Error:   err,
+			Message: "Forum with that slug already exists",
+			Status:  http.StatusConflict,
+		}
 	}
-
 
 	// First entry of such combination
 	sqlStatement = `
-		INSERT INTO forum (title, usr, slug, usr_id)
-			SELECT $1, usr.nickname, $3, usr.id
-			FROM usr
-			WHERE LOWER(nickname) = LOWER($2)
-		RETURNING slug, title, usr;`
-	err = fr.db.QueryRow(sqlStatement, frm.Title, frm.Usr, frm.Slug).Scan(
-		&frm.Slug,
-		&frm.Title,
-		&frm.Usr)
-	if err != nil {
+		INSERT INTO
+			forum (title, usr, slug)
+		SELECT
+			$1, U.nickname, $3
+		FROM
+			usr U
+		WHERE
+			U.nickname = $2
+		RETURNING
+			usr;`
+	if err := fr.db.QueryRow(sqlStatement, frm.Title, frm.Usr, frm.Slug).Scan(&frm.Usr); err != nil {
 		fmt.Println(err)
-		return http.StatusNotFound, &models.Message{Message:"Can't find user with nickname: " + *frm.Usr}
+		return models.Message{
+			Error:   nil,
+			Message: fmt.Sprintf("Can't find user with nickname: %v", *frm.Usr),
+			Status:  http.StatusNotFound,
+		}
 	} else {
-		return http.StatusCreated, nil
+		return models.Message{
+			Error:   nil,
+			Message: "",
+			Status:  http.StatusCreated,
+		}
 	}
 }
 
 func (fr *forumRepository) GetInfo(frm *models.Forum) int {
 	sqlStatement := `
-		SELECT title, usr, slug, posts, threads
-		FROM forum
-		WHERE LOWER(slug) = LOWER($1);`
+		SELECT
+			title, usr, slug, posts, threads
+		FROM
+			forum
+		WHERE
+			slug = $1;`
 	rows := fr.db.QueryRow(sqlStatement, frm.Slug)
 	err := rows.Scan(
 		&frm.Title,
@@ -87,7 +109,7 @@ func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 			FROM
 				thread
 			WHERE
-				LOWER(slug) = LOWER($1);`
+				slug = $1;`
 		rows := fr.db.QueryRow(sqlStatement, thrd.Slug)
 		tempThread := models.Thread{}
 		err := rows.Scan(
@@ -109,14 +131,23 @@ func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 
 	// First entry of such combination
 	sqlStatement := `
-		INSERT INTO thread (title, author,       forum,      message, slug, created, author_id, forum_id)
-			SELECT 			$1,    usr.nickname, forum.slug, $2,      $3,   $4,      usr.id,    forum.id
-			FROM forum
-			FULL OUTER JOIN usr
-			ON LOWER(usr.nickname) = LOWER($5)
-			WHERE LOWER(forum.slug) = LOWER($6)
-		RETURNING id, forum;`
-	row := fr.db.QueryRow(sqlStatement, thrd.Title, thrd.Message, thrd.Slug, thrd.Created, thrd.Author, thrd.Forum)
+		INSERT INTO
+			thread (title, author, forum, message, slug, created)
+		SELECT
+			$1, U.nickname, F.slug, $4, $5, $6
+		FROM
+			usr U
+			JOIN
+				forum F
+				ON
+					F.slug = $3
+		WHERE
+			U.nickname = $2
+		RETURNING
+			id, forum;`
+	thrd.Slug = new(string)
+	*thrd.Slug = slug.Make(time.Now().String())
+	row := fr.db.QueryRow(sqlStatement, thrd.Title, thrd.Author, thrd.Forum, thrd.Message, thrd.Slug, thrd.Created)
 	err := row.Scan(
 		&thrd.Id,
 		&thrd.Forum)
@@ -129,7 +160,7 @@ func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 }
 
 func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
-	if cTag, err := fr.db.Exec("SELECT 1 FROM forum WHERE LOWER(slug) = LOWER($1);", query.Slug); err != nil || cTag.RowsAffected() == 0 {
+	if cTag, err := fr.db.Exec("SELECT 1 FROM forum WHERE slug = $1;", query.Slug); err != nil || cTag.RowsAffected() == 0 {
 		return nil, http.StatusNotFound
 	}
 	sqlStatement := `
@@ -142,9 +173,9 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 				JOIN
 					thread T
 					ON
-						LOWER(T.forum) = LOWER($1)
+						T.forum = $1
 							AND
-						LOWER(T.author) = LOWER(U.nickname)
+						T.author = U.nickname
 		
 			UNION DISTINCT
 		
@@ -155,21 +186,21 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 			JOIN
 				post P
 				ON
-					LOWER(P.forum) = LOWER($1)
+					P.forum = $1
 						AND
-					LOWER(P.author) = LOWER(U.nickname)
+					P.author = U.nickname
 		) AS kek
 		`
 	if query.Desc {
 		if query.Since != "" {
-			sqlStatement += fmt.Sprintf("WHERE LOWER(nickname) < LOWER('%v') ", query.Since)
+			sqlStatement += fmt.Sprintf("WHERE nickname < '%v' ", query.Since)
 		}
-		sqlStatement += "ORDER BY LOWER(nickname) DESC LIMIT $2;"
+		sqlStatement += "ORDER BY nickname DESC LIMIT $2;"
 	} else {
 		if query.Since != "" {
-			sqlStatement += fmt.Sprintf("WHERE LOWER(nickname) > LOWER('%v') ", query.Since)
+			sqlStatement += fmt.Sprintf("WHERE nickname > '%v' ", query.Since)
 		}
-		sqlStatement += "ORDER BY LOWER(nickname) ASC LIMIT $2;"
+		sqlStatement += "ORDER BY nickname ASC LIMIT $2;"
 	}
 	rows, err := fr.db.Query(sqlStatement, query.Slug, query.Limit)
 	if err != nil {
@@ -197,19 +228,24 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 
 func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int) {
 	// Check for forum existence (i dunno how to do it otherwise)
-	var forumId int
 	sqlStatement := `
-		SELECT id
-			FROM forum
-			WHERE LOWER(slug) = LOWER($1);`
-	if err := fr.db.QueryRow(sqlStatement, query.Slug).Scan(&forumId); err != nil {
+		SELECT
+			1
+		FROM
+			forum
+		WHERE
+			slug = $1;`
+	if cTag, err := fr.db.Exec(sqlStatement, query.Slug); err != nil || cTag.RowsAffected() == 0 {
 		return nil, http.StatusNotFound
 	}
 
 	sqlStatement = `
-		SELECT id, title, author, forum, message, votes, slug, created
-			FROM thread
-			WHERE forum_id = $1 `
+		SELECT
+			id, title, author, forum, message, votes, slug, created
+		FROM
+			thread
+		WHERE
+			forum = $1 `
 	if len(query.Since) != 0 {
 		if query.Desc {
 			sqlStatement += fmt.Sprintf("AND created <= timestamp '%v' ", query.Since)
@@ -222,9 +258,9 @@ func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int)
 	} else {
 		sqlStatement += "ORDER BY created ASC LIMIT $2;"
 	}
-	rows, err := fr.db.Query(sqlStatement, forumId, query.Limit)
+	rows, err := fr.db.Query(sqlStatement, query.Slug, query.Limit)
 	if err != nil {
-		//log.Println("ERROR: Forum Repo GetThreads")
+		log.Println("ERROR: Forum Repo GetThreads", err)
 		return nil, http.StatusBadRequest
 	}
 
@@ -241,7 +277,7 @@ func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int)
 			&tempThread.Slug,
 			&tempThread.Created)
 		if err != nil {
-			//log.Println("ERROR: Forum Repo GetThreads")
+			log.Println("ERROR: Forum Repo GetThreads", err)
 			return nil, http.StatusInternalServerError
 		}
 		threads = append(threads, tempThread)

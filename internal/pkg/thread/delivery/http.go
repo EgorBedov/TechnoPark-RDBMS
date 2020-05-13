@@ -56,8 +56,6 @@ func (th *ThreadHandler) CreatePosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (th *ThreadHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
-	//log.Println("/thread/{slug_or_id}/details GET working")
-
 	slugOrId := chi.URLParam(r, "slug_or_id")
 	thrd := models.Thread{}
 	status := th.threadUseCase.GetInfo(&thrd, slugOrId)
@@ -66,14 +64,10 @@ func (th *ThreadHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 		network.GenErrorCode(w, r, "Can't find thread with slug or id " + slugOrId, status)
 		return
 	}
-
-	//log.Println("/thread/{slug_or_id}/details GET worked nicely ")
 	network.Jsonify(w, thrd, status)
 }
 
 func (th *ThreadHandler) UpdateThread(w http.ResponseWriter, r *http.Request) {
-	//log.Println("/thread/{slug_or_id}/details POST working")
-
 	decoder := json.NewDecoder(r.Body)
 	var thrd models.Thread
 	if err := decoder.Decode(&thrd); err != nil {
@@ -88,22 +82,16 @@ func (th *ThreadHandler) UpdateThread(w http.ResponseWriter, r *http.Request) {
 		network.GenErrorCode(w, r, "Can't find thread with slug_or_id " + slugOrId, status)
 		return
 	}
-
-	//log.Println("/thread/{slug_or_id}/details POST worked nicely ")
 	network.Jsonify(w, thrd, status)
 }
 
 func (th *ThreadHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
-	//log.Println("/thread/{slug_or_id}/create GET working")
-
 	query := models.DecodePostQuery(r)
 	posts, status := th.threadUseCase.GetPosts(&query)
 	if status == http.StatusNotFound {
 		network.GenErrorCode(w, r, "Can't find thread with slug or id " + query.SlugOrId, status)
 		return
 	}
-
-	//log.Println("/thread/{slug_or_id}/create GET worked nicely")
 
 	if posts == nil {
 		posts = []models.Post{}
@@ -112,35 +100,22 @@ func (th *ThreadHandler) GetPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (th *ThreadHandler) Vote(w http.ResponseWriter, r *http.Request) {
-	//log.Println("/thread/{slug_or_id}/vote POST working")
-
-	// Get info about thread
-	slugOrId := chi.URLParam(r, "slug_or_id")
-	thrd := models.Thread{}
-	status := th.threadUseCase.GetInfo(&thrd, slugOrId)
-	if status == http.StatusNotFound {
-		network.GenErrorCode(w, r, "Can't find thread with slug or id " + slugOrId, status)
-		return
-	}
-
-	// Prepare vote
 	decoder := json.NewDecoder(r.Body)
 	var vote models.Vote
 	if err := decoder.Decode(&vote); err != nil {
 		network.GenErrorCode(w, r, err.Error(), http.StatusBadRequest)
 		return
 	}
+	vote.ThreadSlugOrId = chi.URLParam(r, "slug_or_id")
 
 	// Send vote
-	vote.ThreadId = thrd.Id
-	status, thrd.Votes = th.threadUseCase.Vote(&vote)
-	if status != http.StatusOK {
-		network.GenErrorCode(w, r, "Vote failed", status)
+	thrd, message := th.threadUseCase.Vote(&vote)
+	if message.Status != http.StatusOK {
+		network.GenErrorCode(w, r, message.Message, message.Status)
 		return
 	}
 
-	//log.Println("/thread/{slug_or_id}/vote POST worked nicely ")
-	network.Jsonify(w, thrd, status)
+	network.Jsonify(w, *thrd, message.Status)
 }
 
 

@@ -6,7 +6,4 @@ type Forum struct {
 	Slug 	string	`json:"slug"`
 	Posts 	*int64	`json:"posts, omitempty"`
 	Threads *int32	`json:"threads, omitempty"`
-
-	//Id 		int		`json:"id, omitempty"`
-	//UsrId	int		`json:"userId, omitempty"`
 }

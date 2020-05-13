@@ -55,7 +55,7 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 		FROM
 			usr
 		WHERE
-			LOWER(nickname) = LOWER($1);`
+			nickname = $1;`
 		tempAuthor := models.User{}
 		rows := pr.db.QueryRow(sqlStatement, tempPost.Author)
 		err := rows.Scan(
@@ -108,7 +108,7 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 		FROM
 			forum
 		WHERE
-			LOWER(slug) = LOWER($1);`
+			slug = $1;`
 		tempForum := models.Forum{}
 		rows := pr.db.QueryRow(sqlStatement, tempPost.Forum)
 		err := rows.Scan(

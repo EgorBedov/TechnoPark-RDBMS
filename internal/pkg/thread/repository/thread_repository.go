@@ -40,7 +40,7 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 			}
 		}
 		if row, err := tr.db.Exec(
-			"SELECT 1 FROM usr WHERE LOWER(nickname) = LOWER($1)",
+			"SELECT 1 FROM usr WHERE nickname = $1",
 			posts[iii].Author);
 		err != nil || row.RowsAffected() == 0 {
 			return models.Message{
@@ -56,7 +56,6 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 			forum,
 			threadId,
 			posts[iii].Created.Format("'2006-01-02 15:04:05.999999999Z07:00:00'"))
-		fmt.Println(posts[iii].Created.Format("'2006-01-02 15:04:05.999999999Z07:00:00'"))
 		if iii + 1 < len (posts) {
 			sqlStatement += `,
 			`
@@ -100,7 +99,7 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 		SET
 			posts = posts + $1
         WHERE
-			LOWER(slug) = LOWER($2);`
+			slug = $2;`
 	if cTag, err := tr.db.Exec(sqlStatement, len(posts), posts[0].Forum); err != nil || cTag.RowsAffected() == 0 {
 		fmt.Println(err)
 		return models.Message{
@@ -118,20 +117,22 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 }
 
 func (tr *threadRepository) GetInfo(thrd *models.Thread, slugOrId string) int {
-	sqlStatement := `
-		SELECT id, title, author, forum, message, votes, slug, created
-			FROM thread
-			`
-	var row *pgx.Row
-	if id, err := strconv.Atoi(slugOrId); err != nil {
-		sqlStatement += "WHERE LOWER(slug) = LOWER($1);"
-		row = tr.db.QueryRow(sqlStatement, slugOrId)
+	var whereCondition string
+	threadId, err := strconv.Atoi(slugOrId)
+	if err != nil {
+		whereCondition = fmt.Sprintf("slug = '%v'", slugOrId)
 	} else {
-		sqlStatement += "WHERE id = $1;"
-		row = tr.db.QueryRow(sqlStatement, id)
+		whereCondition = fmt.Sprintf("id = %v", threadId)
 	}
-
-	err := row.Scan(
+	sqlStatement := fmt.Sprintf(`
+		SELECT
+			id, title, author, forum, message, votes, slug, created
+		FROM
+			thread
+		WHERE
+			%v;`, whereCondition)
+	row := tr.db.QueryRow(sqlStatement)
+	err = row.Scan(
 		&thrd.Id,
 		&thrd.Title,
 		&thrd.Author,
@@ -169,7 +170,7 @@ func (tr *threadRepository) UpdateThread(thrd *models.Thread, slugOrId string) i
 	}
 	var row *pgx.Row
 	if id, err := strconv.Atoi(slugOrId); err != nil {
-		sqlStatement += " WHERE LOWER(slug) = LOWER($1) RETURNING id, title, author, forum, message, votes, slug, created;"
+		sqlStatement += " WHERE slug = $1 RETURNING id, title, author, forum, message, votes, slug, created;"
 		row = tr.db.QueryRow(sqlStatement, slugOrId)
 	} else {
 		sqlStatement += "WHERE id = $1 RETURNING id, title, author, forum, message, votes, slug, created;"
@@ -204,7 +205,7 @@ func (tr *threadRepository) GetPosts(query *models.PostQuery) ([]models.Post, in
 			FROM thread
 			`
 	if threadId, err = strconv.Atoi(query.SlugOrId); err != nil {
-		sqlStatement += "WHERE LOWER(slug) = LOWER($1);"
+		sqlStatement += "WHERE slug = $1;"
 		err = tr.db.QueryRow(sqlStatement, query.SlugOrId).Scan(&threadId)
 	} else {
 		sqlStatement += "WHERE id = $1;"
@@ -222,42 +223,83 @@ func (tr *threadRepository) GetPosts(query *models.PostQuery) ([]models.Post, in
 	}
 }
 
-func (tr *threadRepository) Vote(vote *models.Vote) (int, int) {
-	// Insert return 0, upsert return old value
-	sqlStatement := `
-		INSERT INTO vote (nickname, voice, thread_id, usr_id)
-			SELECT U.nickname, $1, $2, U.id
-				FROM usr U
-				WHERE U.nickname = $3
-		ON CONFLICT ON CONSTRAINT unique_vote
-			DO UPDATE SET voice = $1
-			RETURNING (
-				SELECT COALESCE(MIN(v2.voice), 0)
-					FROM vote v2
-				WHERE vote.usr_id = v2.usr_id AND vote.thread_id = v2.thread_id);`
+func (tr *threadRepository) Vote(vote *models.Vote) (*models.Thread, models.Message) {
+	var whereCondition string
+	threadId, err := strconv.Atoi(vote.ThreadSlugOrId)
+	if err != nil {
+		whereCondition = fmt.Sprintf("T.slug = '%v'", vote.ThreadSlugOrId)
+	} else {
+		whereCondition = fmt.Sprintf("T.id = %v", threadId)
+	}
 
+	// Insert return 0, upsert return old value
+	sqlStatement := fmt.Sprintf(`
+		INSERT INTO
+			vote (nickname, voice, thread)
+		SELECT
+			$1, $2, T.slug
+		FROM
+			thread T
+		WHERE
+			%v
+		ON CONFLICT ON CONSTRAINT
+			unique_vote
+		DO UPDATE
+			SET voice = $2
+		RETURNING thread, (
+			SELECT COALESCE(MIN(v2.voice), 0)
+			FROM
+				vote v2
+			WHERE
+				vote.nickname = v2.nickname
+					AND
+				vote.thread = v2.thread);`, whereCondition)
+
+	var thrd models.Thread
 	oldVoice := 0
-	err := tr.db.QueryRow(sqlStatement, vote.Voice, vote.ThreadId, vote.Nickname).Scan(&oldVoice)
+	err = tr.db.QueryRow(sqlStatement, vote.Nickname, vote.Voice).Scan(&thrd.Slug, &oldVoice)
 	if err != nil {
 		fmt.Println(err)
-		return http.StatusNotFound, 0
+		return nil, models.Message{
+			Error:   err,
+			Message: fmt.Sprintf("Can't find thread with slug or id: %v", vote.ThreadSlugOrId),
+			Status:  http.StatusNotFound,
+		}
 	}
 
 	// TODO: remove this query
 	sqlStatement = `
-		UPDATE thread
-			SET votes = votes - $1 + $2
-			WHERE id = $3
-		RETURNING votes;`
+		UPDATE
+			thread
+		SET
+			votes = votes - $1 + $2
+		WHERE
+			slug = $3
+		RETURNING
+			id, title, author, forum, message, votes, slug, created;`
 
-	var newVotes int
-	err = tr.db.QueryRow(sqlStatement, oldVoice, vote.Voice, vote.ThreadId).Scan(&newVotes)
+	err = tr.db.QueryRow(sqlStatement, oldVoice, vote.Voice, thrd.Slug).Scan(
+		&thrd.Id,
+		&thrd.Title,
+		&thrd.Author,
+		&thrd.Forum,
+		&thrd.Message,
+		&thrd.Votes,
+		&thrd.Slug,
+		&thrd.Created)
 	if err != nil {
-		//log.Println("ERROR: Thread Repo Vote")
-		return http.StatusInternalServerError, 0
+		return nil, models.Message{
+			Error:   err,
+			Message: fmt.Sprintf("Vote: %v", err),
+			Status:  http.StatusInternalServerError,
+		}
 	}
 
-	return http.StatusOK, newVotes
+	return &thrd, models.Message{
+		Error:   nil,
+		Message: "",
+		Status:  http.StatusOK,
+	}
 }
 
 func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) ([]models.Post, int) {
@@ -525,7 +567,7 @@ func (tr *threadRepository) GetThreadInfoBySlugOrId(slugOrId string) (int, strin
 	threadId, err := strconv.Atoi(slugOrId)
 	var forum string
 	if err != nil {
-		sqlStatement += "WHERE LOWER(slug) = LOWER($1);"
+		sqlStatement += "WHERE slug = $1;"
 		err = tr.db.QueryRow(sqlStatement, slugOrId).Scan(&threadId, &forum)
 	} else {
 		sqlStatement += "WHERE id = $1;"
@@ -542,7 +584,7 @@ func (tr *threadRepository) emptyUpdateThread(thrd *models.Thread, slugOrId stri
 		`
 	var row *pgx.Row
 	if id, err := strconv.Atoi(slugOrId); err != nil {
-		sqlStatement += " WHERE LOWER(slug) = LOWER($1);"
+		sqlStatement += " WHERE slug = $1;"
 		row = tr.db.QueryRow(sqlStatement, slugOrId)
 	} else {
 		sqlStatement += "WHERE id = $1;"
