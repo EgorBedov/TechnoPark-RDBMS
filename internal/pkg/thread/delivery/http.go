@@ -27,7 +27,6 @@ func NewThreadHandler(fu thread.UseCase, r *chi.Mux) {
 }
 
 func (th *ThreadHandler) CreatePosts(w http.ResponseWriter, r *http.Request) {
-	//log.Println("/thread/{slug_or_id}/create POST working")
 	decoder := json.NewDecoder(r.Body)
 	var posts []models.Post
 	if err := decoder.Decode(&posts); err != nil {
@@ -35,29 +34,25 @@ func (th *ThreadHandler) CreatePosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	threadId, err := th.threadUseCase.GetThreadIdBySlugOrId(chi.URLParam(r, "slug_or_id"))
+	threadId, forum, err := th.threadUseCase.GetThreadInfoBySlugOrId(chi.URLParam(r, "slug_or_id"))
 	if err != nil {
 		network.Jsonify(w, models.Post{}, http.StatusNotFound)
 		return
 	}
 
 	if len(posts) == 0 {
-		//log.Println("/thread/{slug_or_id}/create POST finished with empty ")
 		network.Jsonify(w, posts, http.StatusCreated)
 		return
 	}
 
-	slugOrId := chi.URLParam(r, "slug_or_id")
-	status := th.threadUseCase.CreatePosts(posts, threadId)
+	message := th.threadUseCase.CreatePosts(posts, threadId, forum)
 
-	if status != http.StatusCreated {
-		//log.Println("/thread/{slug_or_id}/create POST finished with error ", status)
-		network.GenErrorCode(w, r, "Can't find parent message or thread with slug_or_id " + slugOrId, status)
+	if message.Status != http.StatusCreated {
+		network.GenErrorCode(w, r, message.Message, message.Status)
 		return
 	}
 
-	//log.Println("/thread/{slug_or_id}/create POST worked nicely ")
-	network.Jsonify(w, posts, status)
+	network.Jsonify(w, posts, message.Status)
 }
 
 func (th *ThreadHandler) GetInfo(w http.ResponseWriter, r *http.Request) {

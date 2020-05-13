@@ -21,12 +21,13 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 	var result models.PostInfo
 
 	sqlStatement := `
-		SELECT id, parent, author, message, isedited, forum, thread_id, created, author_id, forum_id
-		FROM post
-		WHERE id = $1;`
+		SELECT
+			id, parent, author, message, isedited, forum, thread_id, created
+		FROM
+			post
+		WHERE
+			id = $1;`
 	rows := pr.db.QueryRow(sqlStatement, query.PostId)
-	var authorId int
-	var forumId int
 	tempPost := models.Post{}
 	err := rows.Scan(
 		&tempPost.Id,
@@ -36,9 +37,7 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 		&tempPost.IsEdited,
 		&tempPost.Forum,
 		&tempPost.ThreadId,
-		&tempPost.Created,
-		&authorId,
-		&forumId)
+		&tempPost.Created)
 
 	// Post with that id doesn't exist
 	if err == pgx.ErrNoRows {
@@ -51,11 +50,14 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 
 	if query.Author {
 		sqlStatement = `
-		SELECT nickname, fullname, about, email
-		FROM usr
-		WHERE id = $1;`
+		SELECT
+			nickname, fullname, about, email
+		FROM
+			usr
+		WHERE
+			LOWER(nickname) = LOWER($1);`
 		tempAuthor := models.User{}
-		rows := pr.db.QueryRow(sqlStatement, authorId)
+		rows := pr.db.QueryRow(sqlStatement, tempPost.Author)
 		err := rows.Scan(
 			&tempAuthor.NickName,
 			&tempAuthor.FullName,
@@ -101,11 +103,14 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 
 	if query.Forum {
 		sqlStatement = `
-		SELECT title, usr, slug, posts, threads
-		FROM forum
-		WHERE id = $1;`
+		SELECT
+			title, usr, slug, posts, threads
+		FROM
+			forum
+		WHERE
+			LOWER(slug) = LOWER($1);`
 		tempForum := models.Forum{}
-		rows := pr.db.QueryRow(sqlStatement, forumId)
+		rows := pr.db.QueryRow(sqlStatement, tempPost.Forum)
 		err := rows.Scan(
 			&tempForum.Title,
 			&tempForum.Usr,

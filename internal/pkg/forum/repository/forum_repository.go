@@ -129,28 +129,35 @@ func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 }
 
 func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
-	// Check for forum existence (i dunno how to do it otherwise)
-	sqlStatement := `
-		SELECT id
-			FROM forum
-			WHERE LOWER(slug) = LOWER($1);`
-	var forumId int
-	if err := fr.db.QueryRow(sqlStatement, query.Slug).Scan(&forumId); err != nil {
+	if cTag, err := fr.db.Exec("SELECT 1 FROM forum WHERE LOWER(slug) = LOWER($1);", query.Slug); err != nil || cTag.RowsAffected() == 0 {
 		return nil, http.StatusNotFound
 	}
-
-	sqlStatement = `
+	sqlStatement := `
 		SELECT *
 		FROM (
-			SELECT nickname, fullname, about, email
-			FROM usr U
-			JOIN thread T ON T.forum_id = $1 AND T.author_id = U.id
+			SELECT
+				nickname, fullname, about, email
+			FROM
+				usr U
+				JOIN
+					thread T
+					ON
+						LOWER(T.forum) = LOWER($1)
+							AND
+						LOWER(T.author) = LOWER(U.nickname)
 		
 			UNION DISTINCT
 		
-			SELECT nickname, fullname, about, email
-			FROM usr U
-			JOIN post P ON P.forum_id = $1 AND P.author_id = U.id
+			SELECT
+				nickname, fullname, about, email
+			FROM
+				usr U
+			JOIN
+				post P
+				ON
+					LOWER(P.forum) = LOWER($1)
+						AND
+					LOWER(P.author) = LOWER(U.nickname)
 		) AS kek
 		`
 	if query.Desc {
@@ -164,10 +171,10 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 		}
 		sqlStatement += "ORDER BY LOWER(nickname) ASC LIMIT $2;"
 	}
-	rows, err := fr.db.Query(sqlStatement, forumId, query.Limit)
+	rows, err := fr.db.Query(sqlStatement, query.Slug, query.Limit)
 	if err != nil {
 		fmt.Println(rows)
-		return nil, http.StatusBadRequest
+		return nil, http.StatusNotFound
 	}
 
 	var users []models.User

@@ -56,9 +56,6 @@ CREATE TABLE IF NOT EXISTS post
     forum       VARCHAR(128)        REFERENCES forum (slug) ON DELETE CASCADE,
     thread_id   INTEGER             REFERENCES thread (id) ON DELETE CASCADE,
     created     TIMESTAMP           DEFAULT current_timestamp,
-
-    author_id   INTEGER             NOT NULL REFERENCES usr (id) ON DELETE CASCADE,
-    forum_id    INTEGER             NOT NULL REFERENCES forum (id) ON DELETE CASCADE,
     CONSTRAINT unique_post UNIQUE (id, thread_id)
 );
 
@@ -124,25 +121,6 @@ CREATE TRIGGER increment_threads
     AFTER INSERT ON thread
     FOR EACH ROW
     EXECUTE PROCEDURE trigger_increment_threads();
-
-
--- Increment posts on forum
--- TODO: inserting pack of posts so remove this maybe
-DROP FUNCTION IF EXISTS trigger_increment_posts();
-CREATE FUNCTION trigger_increment_posts()
-RETURNS trigger AS
-    $BODY$
-    BEGIN
-        UPDATE forum
-            SET posts = posts + 1
-        WHERE id = NEW.forum_id;
-        RETURN NEW;
-    END;
-    $BODY$ LANGUAGE plpgsql;
-CREATE TRIGGER increment_posts
-    AFTER INSERT ON post
-    FOR EACH ROW
-    EXECUTE PROCEDURE trigger_increment_posts();
 
 
 

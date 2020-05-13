@@ -18,15 +18,12 @@ func NewPgxThreadRepository(db *pgx.ConnPool) thread.Repository {
 	return &threadRepository{db: db}
 }
 
-func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int) int {
+func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum string) models.Message {
 	sqlStatement := `
-		INSERT INTO post (parent, author,     message, forum,   thread_id, created, author_id,  forum_id)
-			SELECT        $1,     U.nickname, $2,      T.forum, T.id,      $3,      U.id,       T.forum_id
-			FROM usr U
-			FULL OUTER JOIN thread T
-			ON T.id = $4
-			WHERE U.nickname = $5
-		RETURNING forum, id;`
+		INSERT INTO
+			post (parent, author, message, forum, thread_id, created)
+		VALUES
+			`
 
 	for iii := 0; iii < len(posts); iii++ {
 		// Check if parent is in the same thread
@@ -35,21 +32,89 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int) int {
 				"SELECT id FROM post WHERE id = $1 AND thread_id = $2",
 				posts[iii].Parent, threadId);
 			err != nil || row.RowsAffected() == 0 {
-				return http.StatusConflict
+				return models.Message{
+					Error:   err,
+					Message: "Parent post was created in another thread",
+					Status:  http.StatusConflict,
+				}
 			}
 		}
-		row := tr.db.QueryRow(sqlStatement, posts[iii].Parent, posts[iii].Message, posts[iii].Created, threadId, posts[iii].Author)
-		err := row.Scan(
-			&posts[iii].Forum,
-			&posts[iii].Id)
-		if err != nil {
-			fmt.Println(err)
-			return http.StatusNotFound
+		if row, err := tr.db.Exec(
+			"SELECT 1 FROM usr WHERE LOWER(nickname) = LOWER($1)",
+			posts[iii].Author);
+		err != nil || row.RowsAffected() == 0 {
+			return models.Message{
+				Error:   err,
+				Message: fmt.Sprintf("Can't find post author by nickname: %v", posts[iii].Author),
+				Status:  http.StatusNotFound,
+			}
 		}
-		posts[iii].ThreadId = threadId
+		sqlStatement += fmt.Sprintf("(%v, '%v', '%v', '%v', %v, %v)",
+			posts[iii].Parent,
+			posts[iii].Author,
+			posts[iii].Message,
+			forum,
+			threadId,
+			posts[iii].Created.Format("'2006-01-02 15:04:05.999999999Z07:00:00'"))
+		fmt.Println(posts[iii].Created.Format("'2006-01-02 15:04:05.999999999Z07:00:00'"))
+		if iii + 1 < len (posts) {
+			sqlStatement += `,
+			`
+		}
 	}
 
-	return http.StatusCreated
+	sqlStatement += `
+		RETURNING
+			id;`
+
+	rows, err := tr.db.Query(sqlStatement)
+
+	if err != nil {
+		fmt.Println(err)
+		return models.Message{
+			Error:   err,
+			Message: http.StatusText(http.StatusNotFound),
+			Status:  http.StatusNotFound,
+		}
+	}
+
+	iii := 0
+	for rows.Next() {
+		err = rows.Scan(&posts[iii].Id)
+		if err != nil {
+			fmt.Println(err)
+			return models.Message{
+				Error:   err,
+				Message: "",
+				Status:  http.StatusNotFound,
+			}
+		}
+		posts[iii].Forum = forum
+		posts[iii].ThreadId = threadId
+		iii++
+	}
+
+	sqlStatement = `
+        UPDATE
+			forum
+		SET
+			posts = posts + $1
+        WHERE
+			LOWER(slug) = LOWER($2);`
+	if cTag, err := tr.db.Exec(sqlStatement, len(posts), posts[0].Forum); err != nil || cTag.RowsAffected() == 0 {
+		fmt.Println(err)
+		return models.Message{
+			Error:   err,
+			Message: http.StatusText(http.StatusInternalServerError),
+			Status:  http.StatusInternalServerError,
+		}
+	}
+
+	return models.Message{
+		Error:   nil,
+		Message: "",
+		Status:  http.StatusCreated,
+	}
 }
 
 func (tr *threadRepository) GetInfo(thrd *models.Thread, slugOrId string) int {
@@ -197,9 +262,12 @@ func (tr *threadRepository) Vote(vote *models.Vote) (int, int) {
 
 func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) ([]models.Post, int) {
 	sqlStatement := `
-		SELECT id, parent, author, message, isEdited, forum, thread_id, created
-			FROM post
-			WHERE thread_id = $1 `
+		SELECT
+			id, parent, author, message, isEdited, forum, thread_id, created
+		FROM
+			post
+		WHERE
+			thread_id = $1 `
 
 	if query.Desc {
 		if query.Since == -1 {
@@ -452,22 +520,19 @@ func reverseArray(array *[]models.Post) {
 	}
 }
 
-func (tr *threadRepository) GetThreadIdBySlugOrId(slugOrId string) (int, error) {
-	sqlStatement := "SELECT id FROM thread "
+func (tr *threadRepository) GetThreadInfoBySlugOrId(slugOrId string) (int, string, error) {
+	sqlStatement := "SELECT id, forum FROM thread "
 	threadId, err := strconv.Atoi(slugOrId)
+	var forum string
 	if err != nil {
 		sqlStatement += "WHERE LOWER(slug) = LOWER($1);"
-		err = tr.db.QueryRow(sqlStatement, slugOrId).Scan(&threadId)
+		err = tr.db.QueryRow(sqlStatement, slugOrId).Scan(&threadId, &forum)
 	} else {
 		sqlStatement += "WHERE id = $1;"
-		err = tr.db.QueryRow(sqlStatement, threadId).Scan(&threadId)
+		err = tr.db.QueryRow(sqlStatement, threadId).Scan(&threadId, &forum)
 	}
 
-	if err != nil {
-		return -1, err
-	}
-
-	return threadId, err
+	return threadId, forum, err
 }
 
 func (tr *threadRepository) emptyUpdateThread(thrd *models.Thread, slugOrId string) int {

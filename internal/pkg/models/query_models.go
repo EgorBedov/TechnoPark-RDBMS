@@ -30,7 +30,9 @@ type PostInfoQuery struct {
 }
 
 type Message struct {
+	Error 		error		`json:"-"`
 	Message 	string		`json:"message"`
+	Status		int			`json:"-"`
 }
 
 func DecodePostInfoQuery(r *http.Request) (*PostInfoQuery, error) {

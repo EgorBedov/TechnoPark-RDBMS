@@ -13,8 +13,8 @@ func NewThreadUseCase(f thread.Repository) thread.UseCase {
 	return &threadUseCase{threadRepo: f}
 }
 
-func (tu *threadUseCase) CreatePosts(posts []models.Post, threadId int) int {
-	return tu.threadRepo.CreatePosts(posts, threadId)
+func (tu *threadUseCase) CreatePosts(posts []models.Post, threadId int, forum string) models.Message {
+	return tu.threadRepo.CreatePosts(posts, threadId, forum)
 }
 
 func (tu *threadUseCase) GetInfo(thrd *models.Thread, slugOrId string) int {
@@ -33,6 +33,6 @@ func (tu *threadUseCase) Vote(vote *models.Vote) (int, int) {
 	return tu.threadRepo.Vote(vote)
 }
 
-func (tu *threadUseCase) GetThreadIdBySlugOrId(slugOrId string) (int, error) {
-	return tu.threadRepo.GetThreadIdBySlugOrId(slugOrId)
+func (tu *threadUseCase) GetThreadInfoBySlugOrId(slugOrId string) (int, string, error) {
+	return tu.threadRepo.GetThreadInfoBySlugOrId(slugOrId)
 }

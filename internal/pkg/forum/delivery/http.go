@@ -66,8 +66,6 @@ func (fh *ForumHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 }
 
 func (fh *ForumHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
-	//log.Println("/forum/{slug}/create POST working ")
-
 	decoder := json.NewDecoder(r.Body)
 	var thrd models.Thread
 	if err := decoder.Decode(&thrd); err != nil {
@@ -83,22 +81,16 @@ func (fh *ForumHandler) CreateThread(w http.ResponseWriter, r *http.Request) {
 		network.GenErrorCode(w, r, "Can't find forum with slug " + thrd.Forum, status)
 		return
 	}
-
-	//log.Println("/forum/{slug}/create POST worked nicely ")
 	network.Jsonify(w, thrd, status)
 }
 
 func (fh *ForumHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
-	//log.Println("/forum/{slug}/users GET working")
-
 	query := models.DecodeQuery(r)
 	users, status := fh.forumUseCase.GetUsers(query)
 	if status == http.StatusNotFound {
 		network.GenErrorCode(w, r, "Can't find forum with slug " + query.Slug, status)
 		return
 	}
-
-	//log.Println("/forum/{slug}/users GET worked nicely ")
 
 	if users == nil {
 		users = []models.User{}
