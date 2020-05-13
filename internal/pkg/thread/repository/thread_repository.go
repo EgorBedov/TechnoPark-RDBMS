@@ -28,7 +28,7 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 	for iii := 0; iii < len(posts); iii++ {
 		// Check if parent is in the same thread
 		if posts[iii].Parent != 0 {
-			if row, err := tr.db.Exec(
+			if row, err := tr.db.Exec(											// index
 				"SELECT id FROM post WHERE id = $1 AND thread_id = $2",
 				posts[iii].Parent, threadId);
 			err != nil || row.RowsAffected() == 0 {
@@ -39,7 +39,7 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 				}
 			}
 		}
-		if row, err := tr.db.Exec(
+		if row, err := tr.db.Exec(								// index
 			"SELECT 1 FROM usr WHERE nickname = $1",
 			posts[iii].Author);
 		err != nil || row.RowsAffected() == 0 {
@@ -66,7 +66,7 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 		RETURNING
 			id;`
 
-	rows, err := tr.db.Query(sqlStatement)
+	rows, err := tr.db.Query(sqlStatement)	// index
 
 	if err != nil {
 		fmt.Println(err)
@@ -99,7 +99,7 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 		SET
 			posts = posts + $1
         WHERE
-			slug = $2;`
+			slug = $2;`							// index
 	if cTag, err := tr.db.Exec(sqlStatement, len(posts), posts[0].Forum); err != nil || cTag.RowsAffected() == 0 {
 		fmt.Println(err)
 		return models.Message{
@@ -116,6 +116,7 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 	}
 }
 
+// Indexed
 func (tr *threadRepository) GetInfo(thrd *models.Thread, slugOrId string) int {
 	var whereCondition string
 	threadId, err := strconv.Atoi(slugOrId)
@@ -151,14 +152,17 @@ func (tr *threadRepository) GetInfo(thrd *models.Thread, slugOrId string) int {
 	}
 }
 
+// Indexed
 func (tr *threadRepository) UpdateThread(thrd *models.Thread, slugOrId string) int {
 	if thrd.Title == "" && thrd.Message == "" {
 		return tr.emptyUpdateThread(thrd, slugOrId)
 	}
 
 	sqlStatement := `
-		UPDATE thread
-		SET `
+		UPDATE
+			thread
+		SET
+			`
 	if thrd.Title != "" {
 		sqlStatement += fmt.Sprintf("title = '%v'", thrd.Title)
 		if thrd.Message != "" {
@@ -223,6 +227,7 @@ func (tr *threadRepository) GetPosts(query *models.PostQuery) ([]models.Post, in
 	}
 }
 
+// Indexed
 func (tr *threadRepository) Vote(vote *models.Vote) (*models.Thread, models.Message) {
 	var whereCondition string
 	threadId, err := strconv.Atoi(vote.ThreadSlugOrId)
@@ -235,9 +240,9 @@ func (tr *threadRepository) Vote(vote *models.Vote) (*models.Thread, models.Mess
 	// Insert return 0, upsert return old value
 	sqlStatement := fmt.Sprintf(`
 		INSERT INTO
-			vote (nickname, voice, thread)
+			vote (nickname, voice, thread_id)
 		SELECT
-			$1, $2, T.slug
+			$1, $2, T.id
 		FROM
 			thread T
 		WHERE
@@ -246,18 +251,18 @@ func (tr *threadRepository) Vote(vote *models.Vote) (*models.Thread, models.Mess
 			unique_vote
 		DO UPDATE
 			SET voice = $2
-		RETURNING thread, (
+		RETURNING thread_id, (
 			SELECT COALESCE(MIN(v2.voice), 0)
 			FROM
 				vote v2
 			WHERE
 				vote.nickname = v2.nickname
 					AND
-				vote.thread = v2.thread);`, whereCondition)
+				vote.thread_id = v2.thread_id);`, whereCondition)
 
 	var thrd models.Thread
 	oldVoice := 0
-	err = tr.db.QueryRow(sqlStatement, vote.Nickname, vote.Voice).Scan(&thrd.Slug, &oldVoice)
+	err = tr.db.QueryRow(sqlStatement, vote.Nickname, vote.Voice).Scan(&thrd.Id, &oldVoice)
 	if err != nil {
 		fmt.Println(err)
 		return nil, models.Message{
@@ -274,11 +279,11 @@ func (tr *threadRepository) Vote(vote *models.Vote) (*models.Thread, models.Mess
 		SET
 			votes = votes - $1 + $2
 		WHERE
-			slug = $3
+			id = $3
 		RETURNING
 			id, title, author, forum, message, votes, slug, created;`
 
-	err = tr.db.QueryRow(sqlStatement, oldVoice, vote.Voice, thrd.Slug).Scan(
+	err = tr.db.QueryRow(sqlStatement, oldVoice, vote.Voice, thrd.Id).Scan(
 		&thrd.Id,
 		&thrd.Title,
 		&thrd.Author,
@@ -302,6 +307,7 @@ func (tr *threadRepository) Vote(vote *models.Vote) (*models.Thread, models.Mess
 	}
 }
 
+// Indexed
 func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) ([]models.Post, int) {
 	sqlStatement := `
 		SELECT
@@ -350,6 +356,7 @@ func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) 
 	return posts, http.StatusOK
 }
 
+// Bitmap HEAP?
 func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) ([]models.Post, int) {
 	// Get all parent posts
 	sqlStatement := `
@@ -418,11 +425,6 @@ func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, quer
 		)
 		SELECT * FROM r
 		`
-	//if query.Desc {
-	//	sqlStatement += "ORDER BY parent DESC, id DESC;"
-	//} else {
-	//	sqlStatement += "ORDER BY parent ASC, id ASC;"
-	//}
 	sqlStatement += "ORDER BY parent ASC, id ASC;"
 
 	tempPost := models.Post{}	// not to allocate memory all the time
@@ -562,6 +564,7 @@ func reverseArray(array *[]models.Post) {
 	}
 }
 
+// Indexed
 func (tr *threadRepository) GetThreadInfoBySlugOrId(slugOrId string) (int, string, error) {
 	sqlStatement := "SELECT id, forum FROM thread "
 	threadId, err := strconv.Atoi(slugOrId)
@@ -577,10 +580,13 @@ func (tr *threadRepository) GetThreadInfoBySlugOrId(slugOrId string) (int, strin
 	return threadId, forum, err
 }
 
+// Indexed
 func (tr *threadRepository) emptyUpdateThread(thrd *models.Thread, slugOrId string) int {
 	sqlStatement := `
-		SELECT id, title, author, forum, message, votes, slug, created
-		FROM thread
+		SELECT
+			id, title, author, forum, message, votes, slug, created
+		FROM
+			thread
 		`
 	var row *pgx.Row
 	if id, err := strconv.Atoi(slugOrId); err != nil {

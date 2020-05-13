@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS usr
 
     id          SERIAL              PRIMARY KEY
 );
-
 CREATE INDEX ON usr USING HASH (nickname);
 
 CREATE TABLE IF NOT EXISTS forum
@@ -26,7 +25,7 @@ CREATE TABLE IF NOT EXISTS forum
     threads     INTEGER             DEFAULT 0
 );
 
-CREATE INDEX ON forum USING HASH (slug);
+CREATE INDEX ON forum (slug);
 
 CREATE TABLE IF NOT EXISTS thread
 (
@@ -41,6 +40,7 @@ CREATE TABLE IF NOT EXISTS thread
 );
 
 CREATE INDEX ON thread USING HASH (slug);
+CREATE INDEX ON thread (forum);
 CREATE INDEX ON thread (created);
 
 CREATE TABLE IF NOT EXISTS post
@@ -57,14 +57,14 @@ CREATE TABLE IF NOT EXISTS post
 );
 
 CREATE INDEX ON post USING HASH (forum);
-CREATE INDEX ON post (thread_id);
+CREATE INDEX ON post (parent);
 
 CREATE TABLE IF NOT EXISTS vote
 (
     nickname    citext      NOT NULL REFERENCES usr (nickname) ON DELETE CASCADE,
     voice       INTEGER     NOT NULL,
-    thread      citext      NOT NULL REFERENCES thread (slug) ON DELETE CASCADE,
-    CONSTRAINT unique_vote UNIQUE (nickname, thread)
+    thread_id   INTEGER     NOT NULL REFERENCES thread (id) ON DELETE CASCADE,
+    CONSTRAINT unique_vote UNIQUE (nickname, thread_id)
 );
 
 

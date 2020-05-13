@@ -16,6 +16,7 @@ func NewPgxUserRepository(db *pgx.ConnPool) user.Repository {
 	return &userRepository{db: db}
 }
 
+// Indexed
 func (ur *userRepository) CreateUser(usr *models.User) ([]models.User, int) {
 	var usrs []models.User
 	sqlStatement := `
@@ -71,6 +72,7 @@ func (ur *userRepository) CreateUser(usr *models.User) ([]models.User, int) {
 	return usrs, http.StatusCreated
 }
 
+// Indexed
 func (ur *userRepository) GetInfo(user *models.User) int {
 	sqlStatement := `
 		SELECT

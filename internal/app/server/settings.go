@@ -18,6 +18,7 @@ import (
 	userRepository "egogoger/internal/pkg/user/repository"
 	userUseCase "egogoger/internal/pkg/user/usecase"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/chi/middleware"
 	"net/http"
 )
 
@@ -46,7 +47,7 @@ func (ss *Settings) GetRouter() http.Handler {
 	conn := db.ConnectToDB()
 
 	r := chi.NewRouter()
-	//r.Use(middleware.Logger)
+	r.Use(middleware.Logger)
 
 	forumDelivery.NewForumHandler(
 		forumUseCase.NewForumUseCase(

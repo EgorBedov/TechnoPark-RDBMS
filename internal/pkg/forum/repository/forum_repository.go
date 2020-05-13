@@ -4,11 +4,8 @@ import (
 	"egogoger/internal/pkg/forum"
 	"egogoger/internal/pkg/models"
 	"fmt"
-	"github.com/gosimple/slug"
 	"github.com/jackc/pgx"
 	"log"
-	"time"
-
 	//"log"
 	"net/http"
 )
@@ -22,6 +19,7 @@ func NewPgxForumRepository(db *pgx.ConnPool) forum.Repository {
 }
 
 func (fr *forumRepository) CreateForum(frm *models.Forum) models.Message {
+	// TODO: seq scan
 	sqlStatement := `
 		SELECT
 			title, usr, slug, posts, threads
@@ -77,6 +75,7 @@ func (fr *forumRepository) CreateForum(frm *models.Forum) models.Message {
 }
 
 func (fr *forumRepository) GetInfo(frm *models.Forum) int {
+	// TODO: bad
 	sqlStatement := `
 		SELECT
 			title, usr, slug, posts, threads
@@ -145,8 +144,6 @@ func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 			U.nickname = $2
 		RETURNING
 			id, forum;`
-	thrd.Slug = new(string)
-	*thrd.Slug = slug.Make(time.Now().String())
 	row := fr.db.QueryRow(sqlStatement, thrd.Title, thrd.Author, thrd.Forum, thrd.Message, thrd.Slug, thrd.Created)
 	err := row.Scan(
 		&thrd.Id,
