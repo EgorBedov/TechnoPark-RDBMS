@@ -1,34 +1,43 @@
 package repository
 
 import (
+	"context"
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/user"
 	"fmt"
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"net/http"
 )
 
+const (
+	QuerySelectUserInfoByNicknameOrId = `
+		SELECT	nickname, fullname, about, email
+		FROM	usr
+		WHERE	nickname = $1
+		OR		email = $2;`
+	QuerySelectUserInfoByNickname = `
+		SELECT	nickname, fullname, about, email
+		FROM	usr
+		WHERE	nickname = $1;`
+	QuerySelectUserNicknameByEmail = `
+		SELECT	nickname
+		FROM	usr
+		WHERE	email = $1;`
+)
+
 type userRepository struct {
-	db *pgx.ConnPool
+	db *pgxpool.Pool
 }
 
-func NewPgxUserRepository(db *pgx.ConnPool) user.Repository {
+func NewPgxUserRepository(db *pgxpool.Pool) user.Repository {
 	return &userRepository{db: db}
 }
 
 // Indexed
 func (ur *userRepository) CreateUser(usr *models.User) ([]models.User, int) {
 	var usrs []models.User
-	sqlStatement := `
-		SELECT
-			nickname, fullname, about, email
-		FROM
-			usr
-		WHERE
-			nickname = $1
-				OR
-			email = $2;`
-	rows, err := ur.db.Query(sqlStatement, usr.NickName, usr.Email)
+	rows, err := ur.db.Query(context.Background(), QuerySelectUserInfoByNicknameOrId, usr.NickName, usr.Email)
 	if err != nil {
 		return nil, http.StatusInternalServerError
 	}
@@ -51,9 +60,9 @@ func (ur *userRepository) CreateUser(usr *models.User) ([]models.User, int) {
 	}
 
 	// First entry of such combination
-	sqlStatement = `
+	sqlStatement := `
 		INSERT INTO usr VALUES ($1, $2, $3, $4);`
-	cTag, err := ur.db.Exec(sqlStatement, usr.NickName, usr.FullName, usr.About, usr.Email)
+	cTag, err := ur.db.Exec(context.Background(), sqlStatement, usr.NickName, usr.FullName, usr.About, usr.Email)
 
 	// Error during execution
 	if err != nil {
@@ -74,14 +83,7 @@ func (ur *userRepository) CreateUser(usr *models.User) ([]models.User, int) {
 
 // Indexed
 func (ur *userRepository) GetInfo(user *models.User) int {
-	sqlStatement := `
-		SELECT
-			nickname, fullname, about, email
-		FROM
-			usr
-		WHERE
-			nickname = $1;`
-	rows := ur.db.QueryRow(sqlStatement, user.NickName)
+	rows := ur.db.QueryRow(context.Background(), QuerySelectUserInfoByNickname, user.NickName)
 	err := rows.Scan(
 		&user.NickName,
 		&user.FullName,
@@ -100,24 +102,15 @@ func (ur *userRepository) GetInfo(user *models.User) int {
 func (ur *userRepository) PostInfo(user *models.User) (int, *models.Message) {
 	if len(user.Email) != 0 {
 		var nickName string
-		sqlStatement := `
-		SELECT
-			nickname
-		FROM
-			usr
-		WHERE
-			email = $1;`
-		err := ur.db.QueryRow(sqlStatement, user.Email).Scan(&nickName)
+		err := ur.db.QueryRow(context.Background(), QuerySelectUserNicknameByEmail, user.Email).Scan(&nickName)
 		if err == nil {
 			return http.StatusConflict, &models.Message{Message:"This email is already registered by user: " + nickName}
 		}
 	}
 
 	sqlStatement := `
-		UPDATE
-			usr
-		SET
-			nickname = $1`
+		UPDATE		usr
+		SET			nickname = $1`
 
 	if len(user.FullName) != 0 {
 		sqlStatement += fmt.Sprintf(", fullname = '%v'", user.FullName)
@@ -130,12 +123,10 @@ func (ur *userRepository) PostInfo(user *models.User) (int, *models.Message) {
 	}
 
 	sqlStatement += `
-		WHERE
-			nickname = $1
-		RETURNING
-			nickname, fullname, about, email;`
+		WHERE		nickname = $1
+		RETURNING	nickname, fullname, about, email;`
 
-	err := ur.db.QueryRow(sqlStatement, user.NickName).Scan(
+	err := ur.db.QueryRow(context.Background(), sqlStatement, user.NickName).Scan(
 		&user.NickName,
 		&user.FullName,
 		&user.About,

@@ -1,19 +1,22 @@
 package repository
 
 import (
+	"context"
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/post"
 	"fmt"
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
+
 	//"log"
 	"net/http"
 )
 
 type postRepository struct {
-	db *pgx.ConnPool
+	db *pgxpool.Pool
 }
 
-func NewPgxPostRepository(db *pgx.ConnPool) post.Repository {
+func NewPgxPostRepository(db *pgxpool.Pool) post.Repository {
 	return &postRepository{db: db}
 }
 
@@ -21,13 +24,10 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 	var result models.PostInfo
 
 	sqlStatement := `
-		SELECT
-			id, parent, author, message, isedited, forum, thread_id, created
-		FROM
-			post
-		WHERE
-			id = $1;`
-	rows := pr.db.QueryRow(sqlStatement, query.PostId)
+		SELECT	id, parent, author, message, isedited, forum, thread_id, created
+		FROM	post
+		WHERE	id = $1;`
+	rows := pr.db.QueryRow(context.Background(), sqlStatement, query.PostId)
 	tempPost := models.Post{}
 	err := rows.Scan(
 		&tempPost.Id,
@@ -50,14 +50,11 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 
 	if query.Author {
 		sqlStatement = `
-		SELECT
-			nickname, fullname, about, email
-		FROM
-			usr
-		WHERE
-			nickname = $1;`
+		SELECT	nickname, fullname, about, email
+		FROM	usr
+		WHERE	nickname = $1;`
 		tempAuthor := models.User{}
-		rows := pr.db.QueryRow(sqlStatement, tempPost.Author)
+		rows := pr.db.QueryRow(context.Background(), sqlStatement, tempPost.Author)
 		err := rows.Scan(
 			&tempAuthor.NickName,
 			&tempAuthor.FullName,
@@ -76,11 +73,11 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 
 	if query.Thread {
 		sqlStatement = `
-		SELECT id, title, author, forum, message, votes, slug, created
-		FROM thread
-		WHERE id = $1;`
+		SELECT 	id, title, author, forum, message, votes, slug, created
+		FROM 	thread
+		WHERE 	id = $1;`
 		tempThread := models.Thread{}
-		rows := pr.db.QueryRow(sqlStatement, tempPost.ThreadId)
+		rows := pr.db.QueryRow(context.Background(), sqlStatement, tempPost.ThreadId)
 		err := rows.Scan(
 			&tempThread.Id,
 			&tempThread.Title,
@@ -103,14 +100,11 @@ func (pr *postRepository) GetInfo(query *models.PostInfoQuery) (int, *models.Pos
 
 	if query.Forum {
 		sqlStatement = `
-		SELECT
-			title, usr, slug, posts, threads
-		FROM
-			forum
-		WHERE
-			slug = $1;`
+		SELECT 	title, usr, slug, posts, threads
+		FROM	forum
+		WHERE	slug = $1;`
 		tempForum := models.Forum{}
-		rows := pr.db.QueryRow(sqlStatement, tempPost.Forum)
+		rows := pr.db.QueryRow(context.Background(), sqlStatement, tempPost.Forum)
 		err := rows.Scan(
 			&tempForum.Title,
 			&tempForum.Usr,
@@ -137,13 +131,13 @@ func (pr *postRepository) PostInfo(pst *models.Post) int {
 	}
 
 	sqlStatement := `
-		UPDATE post
-			SET message = $1
-			WHERE id = $2
-		RETURNING id, parent, author, message, isedited, forum, thread_id, created;`
+		UPDATE 		post
+		SET 		message = $1
+		WHERE 		id = $2
+		RETURNING 	id, parent, author, message, isedited, forum, thread_id, created;`
 
 	tempPost := models.Post{}
-	err := pr.db.QueryRow(sqlStatement, pst.Message, pst.Id).Scan(
+	err := pr.db.QueryRow(context.Background(), sqlStatement, pst.Message, pst.Id).Scan(
 		&tempPost.Id,
 		&tempPost.Parent,
 		&tempPost.Author,
@@ -165,10 +159,10 @@ func (pr *postRepository) PostInfo(pst *models.Post) int {
 
 func (pr *postRepository) emptyPostUpdate(pst *models.Post) int {
 	sqlStatement := `
-		SELECT id, author, message, forum, thread_id, created
-		FROM post
-		WHERE id = $1;`
-	rows := pr.db.QueryRow(sqlStatement, pst.Id)
+		SELECT 	id, author, message, forum, thread_id, created
+		FROM 	post
+		WHERE 	id = $1;`
+	rows := pr.db.QueryRow(context.Background(), sqlStatement, pst.Id)
 	tempPost := models.Post{}
 	err := rows.Scan(
 		&tempPost.Id,

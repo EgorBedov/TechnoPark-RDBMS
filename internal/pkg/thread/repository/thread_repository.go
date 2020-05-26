@@ -1,34 +1,48 @@
 package repository
 
 import (
+	"context"
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/thread"
+	userRepository "egogoger/internal/pkg/user/repository"
 	"fmt"
-	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"time"
+
 	//"log"
 	"net/http"
 	"strconv"
 )
 
+const (
+	QueryInsertPosts = `
+		INSERT INTO	post (parent, author, message, forum, thread_id, created)
+		VALUES		($1, $2, $3, $4, $5, $6)
+		RETURNING 	id;`
+	QueryIncrementPostsInForum = `
+		UPDATE	forum
+		SET		posts = posts + $1
+        WHERE	slug = $2;`
+)
+
 type threadRepository struct {
-	db *pgx.ConnPool
+	db *pgxpool.Pool
 }
 
-func NewPgxThreadRepository(db *pgx.ConnPool) thread.Repository {
+func NewPgxThreadRepository(db *pgxpool.Pool) thread.Repository {
 	return &threadRepository{db: db}
 }
 
 func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum string) models.Message {
-	sqlStatement := `
-		INSERT INTO
-			post (parent, author, message, forum, thread_id, created)
-		VALUES
-			`
+	batch := &pgx.Batch{}
+	var err error
+	timeNow := time.Now().UTC()
 
 	for iii := 0; iii < len(posts); iii++ {
 		// Check if parent is in the same thread
 		if posts[iii].Parent != 0 {
-			if row, err := tr.db.Exec(											// index
+			if row, err := tr.db.Exec(context.Background(),
 				"SELECT id FROM post WHERE id = $1 AND thread_id = $2",
 				posts[iii].Parent, threadId);
 			err != nil || row.RowsAffected() == 0 {
@@ -39,8 +53,8 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 				}
 			}
 		}
-		if row, err := tr.db.Exec(								// index
-			"SELECT 1 FROM usr WHERE nickname = $1",
+		if row, err := tr.db.Exec(context.Background(),
+			userRepository.QuerySelectUserInfoByNickname,
 			posts[iii].Author);
 		err != nil || row.RowsAffected() == 0 {
 			return models.Message{
@@ -49,37 +63,17 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 				Status:  http.StatusNotFound,
 			}
 		}
-		sqlStatement += fmt.Sprintf("(%v, '%v', '%v', '%v', %v, %v)",
-			posts[iii].Parent,
-			posts[iii].Author,
-			posts[iii].Message,
-			forum,
-			threadId,
-			posts[iii].Created.Format("'2006-01-02 15:04:05.999999999Z07:00:00'"))
-		if iii + 1 < len (posts) {
-			sqlStatement += `,
-			`
-		}
+
+		posts[iii].Created = timeNow
+
+		batch.Queue(QueryInsertPosts, posts[iii].Parent, posts[iii].Author, posts[iii].Message, forum, threadId, posts[iii].Created)
 	}
 
-	sqlStatement += `
-		RETURNING
-			id;`
+	br := tr.db.SendBatch(context.Background(), batch)
+	defer br.Close()
 
-	rows, err := tr.db.Query(sqlStatement)	// index
-
-	if err != nil {
-		fmt.Println(err)
-		return models.Message{
-			Error:   err,
-			Message: http.StatusText(http.StatusNotFound),
-			Status:  http.StatusNotFound,
-		}
-	}
-
-	iii := 0
-	for rows.Next() {
-		err = rows.Scan(&posts[iii].Id)
+	for iii := 0; iii < len(posts); iii++ {
+		err = br.QueryRow().Scan(&posts[iii].Id)
 		if err != nil {
 			fmt.Println(err)
 			return models.Message{
@@ -90,17 +84,9 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 		}
 		posts[iii].Forum = forum
 		posts[iii].ThreadId = threadId
-		iii++
 	}
 
-	sqlStatement = `
-        UPDATE
-			forum
-		SET
-			posts = posts + $1
-        WHERE
-			slug = $2;`							// index
-	if cTag, err := tr.db.Exec(sqlStatement, len(posts), posts[0].Forum); err != nil || cTag.RowsAffected() == 0 {
+	if cTag, err := tr.db.Exec(context.Background(), QueryIncrementPostsInForum, len(posts), posts[0].Forum); err != nil || cTag.RowsAffected() == 0 {
 		fmt.Println(err)
 		return models.Message{
 			Error:   err,
@@ -132,7 +118,7 @@ func (tr *threadRepository) GetInfo(thrd *models.Thread, slugOrId string) int {
 			thread
 		WHERE
 			%v;`, whereCondition)
-	row := tr.db.QueryRow(sqlStatement)
+	row := tr.db.QueryRow(context.Background(), sqlStatement)
 	err = row.Scan(
 		&thrd.Id,
 		&thrd.Title,
@@ -172,13 +158,13 @@ func (tr *threadRepository) UpdateThread(thrd *models.Thread, slugOrId string) i
 	if thrd.Message != "" {
 		sqlStatement += fmt.Sprintf("message = '%v'", thrd.Message)
 	}
-	var row *pgx.Row
+	var row pgx.Row
 	if id, err := strconv.Atoi(slugOrId); err != nil {
 		sqlStatement += " WHERE slug = $1 RETURNING id, title, author, forum, message, votes, slug, created;"
-		row = tr.db.QueryRow(sqlStatement, slugOrId)
+		row = tr.db.QueryRow(context.Background(), sqlStatement, slugOrId)
 	} else {
 		sqlStatement += "WHERE id = $1 RETURNING id, title, author, forum, message, votes, slug, created;"
-		row = tr.db.QueryRow(sqlStatement, id)
+		row = tr.db.QueryRow(context.Background(), sqlStatement, id)
 	}
 
 	err := row.Scan(
@@ -205,15 +191,15 @@ func (tr *threadRepository) GetPosts(query *models.PostQuery) ([]models.Post, in
 	var threadId int
 	var err error
 	sqlStatement := `
-		SELECT id
-			FROM thread
-			`
+		SELECT 	id
+		FROM 	thread
+		`
 	if threadId, err = strconv.Atoi(query.SlugOrId); err != nil {
-		sqlStatement += "WHERE slug = $1;"
-		err = tr.db.QueryRow(sqlStatement, query.SlugOrId).Scan(&threadId)
+		sqlStatement += "WHERE 		slug = $1;"
+		err = tr.db.QueryRow(context.Background(), sqlStatement, query.SlugOrId).Scan(&threadId)
 	} else {
-		sqlStatement += "WHERE id = $1;"
-		err = tr.db.QueryRow(sqlStatement, threadId).Scan(&threadId)
+		sqlStatement += "WHERE 		id = $1;"
+		err = tr.db.QueryRow(context.Background(), sqlStatement, threadId).Scan(&threadId)
 	}
 	if err != nil {
 		return nil, http.StatusNotFound
@@ -262,7 +248,7 @@ func (tr *threadRepository) Vote(vote *models.Vote) (*models.Thread, models.Mess
 
 	var thrd models.Thread
 	oldVoice := 0
-	err = tr.db.QueryRow(sqlStatement, vote.Nickname, vote.Voice).Scan(&thrd.Id, &oldVoice)
+	err = tr.db.QueryRow(context.Background(), sqlStatement, vote.Nickname, vote.Voice).Scan(&thrd.Id, &oldVoice)
 	if err != nil {
 		fmt.Println(err)
 		return nil, models.Message{
@@ -283,7 +269,7 @@ func (tr *threadRepository) Vote(vote *models.Vote) (*models.Thread, models.Mess
 		RETURNING
 			id, title, author, forum, message, votes, slug, created;`
 
-	err = tr.db.QueryRow(sqlStatement, oldVoice, vote.Voice, thrd.Id).Scan(
+	err = tr.db.QueryRow(context.Background(), sqlStatement, oldVoice, vote.Voice, thrd.Id).Scan(
 		&thrd.Id,
 		&thrd.Title,
 		&thrd.Author,
@@ -310,12 +296,9 @@ func (tr *threadRepository) Vote(vote *models.Vote) (*models.Thread, models.Mess
 // Indexed
 func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) ([]models.Post, int) {
 	sqlStatement := `
-		SELECT
-			id, parent, author, message, isEdited, forum, thread_id, created
-		FROM
-			post
-		WHERE
-			thread_id = $1 `
+		SELECT	id, parent, author, message, isEdited, forum, thread_id, created
+		FROM	post
+		WHERE	thread_id = $1 `
 
 	if query.Desc {
 		if query.Since == -1 {
@@ -323,12 +306,12 @@ func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) 
 		} else {
 			sqlStatement += "AND id < $2 "
 		}
-		sqlStatement += "ORDER BY created DESC, id DESC LIMIT $3;"
+		sqlStatement += "ORDER BY id DESC LIMIT $3;"
 	} else {
 		sqlStatement += "AND id > $2 "
-		sqlStatement += "ORDER BY created ASC, id ASC LIMIT $3;"
+		sqlStatement += "ORDER BY id ASC LIMIT $3;"
 	}
-	rows, err := tr.db.Query(sqlStatement, threadId, query.Since, query.Limit)
+	rows, err := tr.db.Query(context.Background(), sqlStatement, threadId, query.Since, query.Limit)
 	if err != nil {
 		//log.Println("ERROR: Thread Repo GetPosts")
 		return nil, http.StatusBadRequest
@@ -360,23 +343,23 @@ func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) 
 func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) ([]models.Post, int) {
 	// Get all parent posts
 	sqlStatement := `
-		SELECT author, created, forum, id, message, thread_id
-			FROM post
-			WHERE thread_id = $1 AND parent = 0
+		SELECT 	author, created, forum, id, message, thread_id
+		FROM 	post
+		WHERE 	thread_id = $1 AND parent = 0
 		`
 	if query.Desc {
 		sqlStatement += "ORDER BY id DESC "
 	} else {
 		sqlStatement += "ORDER BY id ASC "
 	}
-	var rows *pgx.Rows
+	var rows pgx.Rows
 	var err error
 	if query.Sort == "parent_tree" && query.Since == -1 {
 		sqlStatement += "LIMIT $2;"
-		rows, err = tr.db.Query(sqlStatement, threadId, query.Limit)
+		rows, err = tr.db.Query(context.Background(), sqlStatement, threadId, query.Limit)
 	} else {
 		sqlStatement += ";"
-		rows, err = tr.db.Query(sqlStatement, threadId)
+		rows, err = tr.db.Query(context.Background(), sqlStatement, threadId)
 	}
 	if err != nil {
 		fmt.Println("ERROR tree 1", err)
@@ -412,27 +395,28 @@ func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, quer
 	var posts []models.Post
 	sqlStatement := `
 		WITH RECURSIVE r AS (
-			SELECT author, created, forum, id, message, parent, thread_id
-			FROM post
-			WHERE id = $1
+			SELECT 	author, created, forum, id, message, parent, thread_id
+			FROM 	post
+			WHERE 	id = $1
 		
 			UNION
 		
-			SELECT post.author, post.created, post.forum, post.id, post.message, post.parent, post.thread_id
-			FROM post
-			JOIN r
-				ON post.parent = r.id
+			SELECT 	post.author, post.created, post.forum, post.id, post.message, post.parent, post.thread_id
+			FROM 	post
+			JOIN 	r
+			ON 		post.parent = r.id
 		)
 		SELECT * FROM r
 		`
 	sqlStatement += "ORDER BY parent ASC, id ASC;"
 
+	// TODO: use batch
 	tempPost := models.Post{}	// not to allocate memory all the time
 	for iii := 0; iii < len(parentPosts); iii++ {
 		if !query.Desc {
 			posts = append(posts, parentPosts[iii])
 		}
-		rows, err := tr.db.Query(sqlStatement, parentPosts[iii].Id)
+		rows, err := tr.db.Query(context.Background(), sqlStatement, parentPosts[iii].Id)
 		if err != nil {
 			fmt.Println("ERROR tree 3", err)
 			fmt.Println(rows)
@@ -487,16 +471,16 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 	var posts []models.Post
 	sqlStatement := `
 		WITH RECURSIVE r AS (
-			SELECT author, created, forum, id, message, parent, thread_id
-			FROM post
-			WHERE id = $1
+			SELECT 	author, created, forum, id, message, parent, thread_id
+			FROM 	post
+			WHERE 	id = $1
 		
 			UNION
 		
-			SELECT post.author, post.created, post.forum, post.id, post.message, post.parent, post.thread_id
-			FROM post
-			JOIN r
-				ON post.parent = r.id
+			SELECT 	post.author, post.created, post.forum, post.id, post.message, post.parent, post.thread_id
+			FROM 	post
+			JOIN 	r
+			ON 		post.parent = r.id
 		)
 		SELECT * FROM r ORDER BY id;`
 
@@ -504,7 +488,7 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 	for iii := 0; iii < len(parentPosts); iii++ {
 		var tempPosts []models.Post
 		posts = append(posts, parentPosts[iii])
-		rows, err := tr.db.Query(sqlStatement, parentPosts[iii].Id)
+		rows, err := tr.db.Query(context.Background(), sqlStatement, parentPosts[iii].Id)
 		if err != nil {
 			fmt.Println("ERROR tree 3", err)
 			fmt.Println(rows)
@@ -571,10 +555,10 @@ func (tr *threadRepository) GetThreadInfoBySlugOrId(slugOrId string) (int, strin
 	var forum string
 	if err != nil {
 		sqlStatement += "WHERE slug = $1;"
-		err = tr.db.QueryRow(sqlStatement, slugOrId).Scan(&threadId, &forum)
+		err = tr.db.QueryRow(context.Background(), sqlStatement, slugOrId).Scan(&threadId, &forum)
 	} else {
 		sqlStatement += "WHERE id = $1;"
-		err = tr.db.QueryRow(sqlStatement, threadId).Scan(&threadId, &forum)
+		err = tr.db.QueryRow(context.Background(), sqlStatement, threadId).Scan(&threadId, &forum)
 	}
 
 	return threadId, forum, err
@@ -583,18 +567,16 @@ func (tr *threadRepository) GetThreadInfoBySlugOrId(slugOrId string) (int, strin
 // Indexed
 func (tr *threadRepository) emptyUpdateThread(thrd *models.Thread, slugOrId string) int {
 	sqlStatement := `
-		SELECT
-			id, title, author, forum, message, votes, slug, created
-		FROM
-			thread
+		SELECT	id, title, author, forum, message, votes, slug, created
+		FROM	thread
 		`
-	var row *pgx.Row
+	var row pgx.Row
 	if id, err := strconv.Atoi(slugOrId); err != nil {
-		sqlStatement += " WHERE slug = $1;"
-		row = tr.db.QueryRow(sqlStatement, slugOrId)
+		sqlStatement += "WHERE		slug = $1;"
+		row = tr.db.QueryRow(context.Background(), sqlStatement, slugOrId)
 	} else {
-		sqlStatement += "WHERE id = $1;"
-		row = tr.db.QueryRow(sqlStatement, id)
+		sqlStatement += "WHERE		id = $1;"
+		row = tr.db.QueryRow(context.Background(), sqlStatement, id)
 	}
 
 	err := row.Scan(

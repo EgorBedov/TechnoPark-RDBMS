@@ -25,8 +25,6 @@ func NewPostHandler(fu post.UseCase, r *chi.Mux) {
 }
 
 func (ph *PostHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
-	//log.Println("/post/{id}/details GET working")
-
 	postInfoQuery, err := models.DecodePostInfoQuery(r)
 	if err != nil {
 		network.GenErrorCode(w, r, err.Error(), http.StatusBadRequest)
@@ -40,7 +38,6 @@ func (ph *PostHandler) GetInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//log.Println("/post/{id}/details GET worked nicely")
 	network.Jsonify(w, &postInfo, status)
 }
 

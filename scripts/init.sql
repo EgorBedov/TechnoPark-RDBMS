@@ -6,26 +6,22 @@ SET TIME ZONE 'Europe/London';
 
 CREATE TABLE IF NOT EXISTS usr
 (
-    nickname    citext              NOT NULL UNIQUE,
+    nickname    citext              PRIMARY KEY NOT NULL UNIQUE,
     fullname    VARCHAR(256)        NOT NULL,
     about       TEXT                DEFAULT NULL,
-    email       citext              UNIQUE,
-
-    id          SERIAL              PRIMARY KEY
+    email       citext              UNIQUE
 );
-CREATE INDEX ON usr USING HASH (nickname);
 
 CREATE TABLE IF NOT EXISTS forum
 (
-    id          SERIAL              PRIMARY KEY,
     title       VARCHAR(1024)       NOT NULL,
     usr         citext              NOT NULL REFERENCES usr (nickname) ON DELETE CASCADE,
-    slug        citext              NOT NULL UNIQUE,
+    slug        citext              PRIMARY KEY NOT NULL UNIQUE,
     posts       BIGINT              DEFAULT 0,
     threads     INTEGER             DEFAULT 0
 );
 
-CREATE INDEX ON forum (slug);
+CREATE INDEX ON forum (usr);
 
 CREATE TABLE IF NOT EXISTS thread
 (

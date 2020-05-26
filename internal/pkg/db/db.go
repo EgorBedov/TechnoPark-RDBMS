@@ -1,43 +1,41 @@
 package db
 
 import (
+	"context"
+	"fmt"
 	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"sync"
 )
 
-var (
-	// TODO: add it as environment variable
-	host     = "localhost"
-	port     = uint16(5432)
-	user     = "docker"
-	password = "docker"
-	dbname   = "docker"
+const (
+	Host     = "localhost"
+	Port     = uint16(5432)
+	User     = "docker"
+	Password = "docker"
+	dbName   = "docker"
 )
 
 
-var db *pgx.ConnPool = nil
+var db *pgxpool.Pool = nil
 var syncOnce = sync.Once{}
 
-func ConnectToDB() *pgx.ConnPool {
+func ConnectToDB() *pgxpool.Pool {
 	syncOnce.Do(func() {
-		pgxConfig := pgx.ConnConfig{
-			Host:     host,
-			Port:     port,
-			Database: dbname,
-			User:     user,
-			Password: password,
+		config, err := pgxpool.ParseConfig(fmt.Sprintf("user=%v password=%v host=%v port=%v dbname=%v", User, Password, Host, Port, dbName))
+		if err != nil {
+			panic("Failed to parse config")
 		}
-		pgxConnPoolConfig := pgx.ConnPoolConfig{
-			MaxConnections: 1,
-			ConnConfig: pgxConfig,
-		}
-		dbase, err := pgx.NewConnPool(pgxConnPoolConfig)
+		config.MaxConns = 100
+		config.MinConns = 10
+		config.ConnConfig.LogLevel = pgx.LogLevelDebug
+		pconf, err := pgxpool.ConnectConfig(context.Background(), config)
 		if err != nil {
 			db = nil
+			fmt.Println(err)
 		} else {
-			db = dbase
+			db = pconf
 		}
 	})
-	//log.Println("Connected to db: name=", dbname, ", user=", user, ", port=", port)
 	return db
 }
