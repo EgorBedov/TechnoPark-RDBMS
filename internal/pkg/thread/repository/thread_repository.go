@@ -17,8 +17,8 @@ import (
 
 const (
 	QueryInsertPosts = `
-		INSERT INTO	post (parent, author, message, forum, thread_id, created)
-		VALUES		($1, $2, $3, $4, $5, $6)
+		INSERT INTO	post (parent, author, message, forum, thread_id, created, root)
+		VALUES		($1, $2, $3, $4, $5, $6, $7)
 		RETURNING 	id;`
 	QueryIncrementPostsInForum = `
 		UPDATE	forum
@@ -39,34 +39,36 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 	var err error
 	timeNow := time.Now().UTC()
 
+	// TODO: make it batched as well
 	for iii := 0; iii < len(posts); iii++ {
-		// Check if parent is in the same thread
+		var root int
 		if posts[iii].Parent != 0 {
-			if row, err := tr.db.Exec(context.Background(),
-				"SELECT id FROM post WHERE id = $1 AND thread_id = $2",
-				posts[iii].Parent, threadId);
-			err != nil || row.RowsAffected() == 0 {
-				return models.Message{
-					Error:   err,
-					Message: "Parent post was created in another thread",
-					Status:  http.StatusConflict,
-				}
+			// Check if parent is in the same thread
+			row := tr.db.QueryRow(context.Background(),
+				"SELECT root FROM post WHERE id = $1 AND thread_id = $2",
+				posts[iii].Parent, threadId)
+			err = row.Scan(&root)
+			if err != nil {
+				return models.CreateError(err, "Parent post was created in another thread", http.StatusConflict)
 			}
 		}
+
+		// Check for author
 		if row, err := tr.db.Exec(context.Background(),
 			userRepository.QuerySelectUserInfoByNickname,
 			posts[iii].Author);
 		err != nil || row.RowsAffected() == 0 {
-			return models.Message{
-				Error:   err,
-				Message: fmt.Sprintf("Can't find post author by nickname: %v", posts[iii].Author),
-				Status:  http.StatusNotFound,
-			}
+			return models.CreateError(err, fmt.Sprintf("Can't find post author by nickname: %v", posts[iii].Author), http.StatusNotFound)
 		}
 
+		if root == 0 {
+			root = posts[iii].Parent
+		}
+
+		// Set the same time for every post
 		posts[iii].Created = timeNow
 
-		batch.Queue(QueryInsertPosts, posts[iii].Parent, posts[iii].Author, posts[iii].Message, forum, threadId, posts[iii].Created)
+		batch.Queue(QueryInsertPosts, posts[iii].Parent, posts[iii].Author, posts[iii].Message, forum, threadId, posts[iii].Created, root)
 	}
 
 	br := tr.db.SendBatch(context.Background(), batch)
@@ -76,30 +78,17 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 		err = br.QueryRow().Scan(&posts[iii].Id)
 		if err != nil {
 			fmt.Println(err)
-			return models.Message{
-				Error:   err,
-				Message: "",
-				Status:  http.StatusNotFound,
-			}
+			return models.CreateError(err, err.Error(), http.StatusNotFound)
 		}
 		posts[iii].Forum = forum
 		posts[iii].ThreadId = threadId
 	}
 
 	if cTag, err := tr.db.Exec(context.Background(), QueryIncrementPostsInForum, len(posts), posts[0].Forum); err != nil || cTag.RowsAffected() == 0 {
-		fmt.Println(err)
-		return models.Message{
-			Error:   err,
-			Message: http.StatusText(http.StatusInternalServerError),
-			Status:  http.StatusInternalServerError,
-		}
+		return models.CreateError(err, "Error incrementing posts in forum", http.StatusInternalServerError)
 	}
 
-	return models.Message{
-		Error:   nil,
-		Message: "",
-		Status:  http.StatusCreated,
-	}
+	return models.CreateSuccess(http.StatusCreated)
 }
 
 // Indexed
@@ -341,31 +330,53 @@ func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) 
 
 // Bitmap HEAP?
 func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) ([]models.Post, int) {
-	// Get all parent posts
+	// Get all root posts
 	sqlStatement := `
 		SELECT 	author, created, forum, id, message, thread_id
 		FROM 	post
-		WHERE 	thread_id = $1 AND parent = 0
+		WHERE 	thread_id = $%v AND parent = 0
 		`
+
+	var args []interface{}
+	args = append(args, threadId)
+
+	fmt.Println(query)
+
+	if query.Sort == "parent_tree" && query.Since != -1 {
+		if query.Desc {
+			sqlStatement += `AND 	id < $%v `
+		} else {
+			sqlStatement += `AND	id > $%v `
+		}
+		args = append(args, query.Since)
+	}
 	if query.Desc {
 		sqlStatement += "ORDER BY id DESC "
 	} else {
 		sqlStatement += "ORDER BY id ASC "
 	}
-	var rows pgx.Rows
-	var err error
-	if query.Sort == "parent_tree" && query.Since == -1 {
-		sqlStatement += "LIMIT $2;"
-		rows, err = tr.db.Query(context.Background(), sqlStatement, threadId, query.Limit)
-	} else {
-		sqlStatement += ";"
-		rows, err = tr.db.Query(context.Background(), sqlStatement, threadId)
+	if query.Sort == "parent_tree" {
+		sqlStatement += "LIMIT 	$%v;"
+		args = append(args, query.Limit)
 	}
+
+	var indices []interface{}
+	for iii := range args {
+		indices = append(indices, iii + 1)
+	}
+	sqlStatement = fmt.Sprintf(sqlStatement, indices...)
+
+	rows, err := tr.db.Query(context.Background(), sqlStatement, args...)
+
 	if err != nil {
 		fmt.Println("ERROR tree 1", err)
 		fmt.Println(rows)
 		return nil, http.StatusInternalServerError
 	}
+
+	fmt.Println(rows.CommandTag().String())
+	fmt.Println(rows.FieldDescriptions())
+
 	var parentPosts []models.Post
 	for rows.Next() {
 		tempPost := models.Post{}
@@ -394,21 +405,10 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, query *models.PostQuery) ([]models.Post, int) {
 	var posts []models.Post
 	sqlStatement := `
-		WITH RECURSIVE r AS (
-			SELECT 	author, created, forum, id, message, parent, thread_id
-			FROM 	post
-			WHERE 	id = $1
-		
-			UNION
-		
-			SELECT 	post.author, post.created, post.forum, post.id, post.message, post.parent, post.thread_id
-			FROM 	post
-			JOIN 	r
-			ON 		post.parent = r.id
-		)
-		SELECT * FROM r
-		`
-	sqlStatement += "ORDER BY parent ASC, id ASC;"
+		SELECT  author, created, forum, id, message, parent, thread_id
+		FROM    post
+		WHERE   root = $1
+		ORDER BY parent ASC, id ASC;`
 
 	// TODO: use batch
 	tempPost := models.Post{}	// not to allocate memory all the time
@@ -440,12 +440,12 @@ func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, quer
 		}
 		if query.Desc {
 			tempArray := new([]models.Post)
-			sortChildren(0, parentPosts[iii].Id, tempPosts, tempArray)
+			sortChildren(-1, parentPosts[iii].Id, tempPosts, tempArray)
 			reverseArray(tempArray)
 			posts = append(posts, *tempArray...)
 			posts = append(posts, parentPosts[iii])
 		} else {
-			sortChildren(0, parentPosts[iii].Id, tempPosts, &posts)
+			sortChildren(-1, parentPosts[iii].Id, tempPosts, &posts)
 		}
 	}
 
@@ -470,19 +470,10 @@ func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, quer
 func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models.Post, query *models.PostQuery) ([]models.Post, int) {
 	var posts []models.Post
 	sqlStatement := `
-		WITH RECURSIVE r AS (
-			SELECT 	author, created, forum, id, message, parent, thread_id
-			FROM 	post
-			WHERE 	id = $1
-		
-			UNION
-		
-			SELECT 	post.author, post.created, post.forum, post.id, post.message, post.parent, post.thread_id
-			FROM 	post
-			JOIN 	r
-			ON 		post.parent = r.id
-		)
-		SELECT * FROM r ORDER BY id;`
+		SELECT  author, created, forum, id, message, parent, thread_id
+		FROM    post
+		WHERE   root = $1
+		ORDER BY id;`
 
 	var tempPost models.Post		// not to allocate memory all the time
 	for iii := 0; iii < len(parentPosts); iii++ {
@@ -509,7 +500,7 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 			}
 			tempPosts = append(tempPosts, tempPost)
 		}
-		sortChildren(0, parentPosts[iii].Id, tempPosts, &posts)
+		sortChildren(-1, parentPosts[iii].Id, tempPosts, &posts)
 	}
 
 	if query.Since > -1 {

@@ -2,6 +2,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS citext;
 
+SET enable_seqscan TO off;
 SET TIME ZONE 'Europe/London';
 
 CREATE TABLE IF NOT EXISTS usr
@@ -35,9 +36,9 @@ CREATE TABLE IF NOT EXISTS thread
     created     TIMESTAMP           DEFAULT current_timestamp
 );
 
-CREATE INDEX ON thread USING HASH (slug);
-CREATE INDEX ON thread (forum);
 CREATE INDEX ON thread (created);
+CREATE INDEX ON thread (forum, created);
+CREATE INDEX ON thread (forum, author);
 
 CREATE TABLE IF NOT EXISTS post
 (
@@ -49,11 +50,14 @@ CREATE TABLE IF NOT EXISTS post
     forum       citext              REFERENCES forum (slug) ON DELETE CASCADE,
     thread_id   INTEGER             REFERENCES thread (id) ON DELETE CASCADE,
     created     TIMESTAMP           DEFAULT current_timestamp,
-    CONSTRAINT unique_post UNIQUE (id, thread_id)
+    root        INTEGER             DEFAULT 0
 );
 
 CREATE INDEX ON post USING HASH (forum);
 CREATE INDEX ON post (parent);
+CREATE INDEX ON post (thread_id);
+CREATE INDEX ON post (root);
+CREATE INDEX ON post (forum, author);
 
 CREATE TABLE IF NOT EXISTS vote
 (

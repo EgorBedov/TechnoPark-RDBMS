@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
+	"time"
+
 	//"log"
 	"net/http"
 )
@@ -161,45 +163,48 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 	}
 
 	condition := ""
+	subWhere := ""
+	subCondition := ""
 
 	if query.Desc {
 		if query.Since != "" {
 			condition += fmt.Sprintf("WHERE nickname < '%v' ", query.Since)
+			subWhere = fmt.Sprintf("AND author < '%v' ", query.Since)
 		}
 		condition += "ORDER BY nickname DESC LIMIT $2"
+		subCondition = "ORDER BY author DESC LIMIT $2"
 	} else {
 		if query.Since != "" {
 			condition += fmt.Sprintf("WHERE nickname > '%v' ", query.Since)
+			subWhere = fmt.Sprintf("AND author > '%v' ", query.Since)
 		}
 		condition += "ORDER BY nickname ASC LIMIT $2"
+		subCondition = "ORDER BY author ASC LIMIT $2"
 	}
 
-	//innerCondition := fmt.Sprintf("%v + 100", condition)
-
 	sqlStatement := fmt.Sprintf(`
-		SELECT
-			*
-		FROM (
-			(
-			SELECT      nickname, fullname, about, email
-			FROM        usr U
-			JOIN        thread T
-			ON          T.forum = $1
-			AND         T.author = U.nickname
-			)
-			UNION DISTINCT
-			(
-			SELECT      nickname, fullname, about, email
-			FROM        usr U
-			JOIN        post P
-			ON          P.forum = $1
-			AND         P.author = U.nickname
-			)
-			) AS kek
-		%v;`, condition)
+		SELECT DISTINCT nickname, fullname, about, email
+		FROM ((
+				SELECT      author
+				FROM        thread
+				WHERE       forum = $1
+				%v
+				GROUP BY    author
+				%v
+			) UNION DISTINCT (
+				SELECT      author
+				FROM        post
+				WHERE       forum = $1
+				%v
+				GROUP BY    author
+				%v
+		)) AS kek
+		JOIN    usr U
+		ON      kek.author = U.nickname
+		%v;`, subWhere, subCondition, subWhere, subCondition, condition)
 	rows, err := fr.db.Query(context.Background(), sqlStatement, query.Slug, query.Limit)
 	if err != nil {
-		fmt.Println(rows)
+		fmt.Println(err)
 		return nil, http.StatusNotFound
 	}
 
@@ -236,10 +241,11 @@ func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int)
 		FROM	thread
 		WHERE	forum = $1 `
 	if len(query.Since) != 0 {
+		t, _ := time.Parse(time.RFC3339, query.Since)
 		if query.Desc {
-			sqlStatement += fmt.Sprintf("AND created <= timestamp '%v' ", query.Since)
+			sqlStatement += fmt.Sprintf("AND created <= timestamp '%v' ", t.UTC().Format(time.RFC3339))
 		} else {
-			sqlStatement += fmt.Sprintf("AND created >= timestamp '%v' ", query.Since)
+			sqlStatement += fmt.Sprintf("AND created >= timestamp '%v' ", t.UTC().Format(time.RFC3339))
 		}
 	}
 	if query.Desc {

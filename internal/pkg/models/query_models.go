@@ -29,12 +29,6 @@ type PostInfoQuery struct {
 	Thread	bool
 }
 
-type Message struct {
-	Error 		error		`json:"-"`
-	Message 	string		`json:"message"`
-	Status		int			`json:"-"`
-}
-
 func DecodePostInfoQuery(r *http.Request) (*PostInfoQuery, error) {
 	postId, err := strconv.Atoi(chi.URLParam(r, "id"))
 	query := PostInfoQuery{
