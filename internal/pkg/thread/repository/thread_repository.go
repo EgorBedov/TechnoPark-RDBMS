@@ -334,7 +334,8 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 	sqlStatement := `
 		SELECT 	author, created, forum, id, message, thread_id
 		FROM 	post
-		WHERE 	thread_id = $%v AND parent = 0
+		WHERE 	thread_id = $%v
+		AND 	parent = 0
 		`
 
 	var args []interface{}

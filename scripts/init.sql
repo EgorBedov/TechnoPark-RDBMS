@@ -1,9 +1,7 @@
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS citext;
-
 SET enable_seqscan TO off;
-SET TIME ZONE 'Europe/London';
 
 CREATE TABLE IF NOT EXISTS usr
 (
