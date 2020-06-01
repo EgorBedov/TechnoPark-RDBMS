@@ -340,8 +340,6 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 	var args []interface{}
 	args = append(args, threadId)
 
-	fmt.Println(query)
-
 	if query.Sort == "parent_tree" && query.Since != -1 {
 		if query.Desc {
 			sqlStatement += `AND 	id < $%v `
@@ -373,9 +371,6 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 		fmt.Println(rows)
 		return nil, http.StatusInternalServerError
 	}
-
-	fmt.Println(rows.CommandTag().String())
-	fmt.Println(rows.FieldDescriptions())
 
 	var parentPosts []models.Post
 	for rows.Next() {

@@ -36,7 +36,6 @@ CREATE TABLE IF NOT EXISTS thread
     created     TIMESTAMP           DEFAULT current_timestamp
 );
 
-CREATE INDEX ON thread (created);
 CREATE INDEX ON thread (forum, created);
 CREATE INDEX ON thread (forum, author);
 
@@ -58,6 +57,9 @@ CREATE INDEX ON post (parent);
 CREATE INDEX ON post (thread_id);
 CREATE INDEX ON post (root);
 CREATE INDEX ON post (forum, author);
+CREATE INDEX ON post (thread_id)
+WHERE parent = 0;
+
 
 CREATE TABLE IF NOT EXISTS vote
 (
