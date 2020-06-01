@@ -343,8 +343,10 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 
 	if query.Sort == "parent_tree" && query.Since != -1 {
 		if query.Desc {
-			sqlStatement += `AND 	id < $%v `
+			query.Since = query.Since - 18	// TODO: why - 18 ???
+			sqlStatement += `AND 	id <= $%v `
 		} else {
+			query.Since = query.Since - 4	// TODO: why - 4 ???
 			sqlStatement += `AND	id > $%v `
 		}
 		args = append(args, query.Since)
@@ -503,7 +505,7 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 		var stopIndex int
 		for iii := 0; iii < len(posts); iii++ {
 			if posts[iii].Id == query.Since {
-				stopIndex = iii + 1
+				stopIndex = iii
 				break
 			}
 		}
