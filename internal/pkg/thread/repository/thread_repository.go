@@ -77,7 +77,6 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 	for iii := 0; iii < len(posts); iii++ {
 		err = br.QueryRow().Scan(&posts[iii].Id, &posts[iii].Created)
 		if err != nil {
-			fmt.Println(err)
 			return models.CreateError(err, err.Error(), http.StatusNotFound)
 		}
 		posts[iii].Forum = forum
@@ -120,7 +119,6 @@ func (tr *threadRepository) GetInfo(thrd *models.Thread, slugOrId string) int {
 
 	// User with that nickname doesn't exist
 	if err == pgx.ErrNoRows {
-		fmt.Println(err)
 		return http.StatusNotFound
 	} else {
 		return http.StatusOK
@@ -168,7 +166,6 @@ func (tr *threadRepository) UpdateThread(thrd *models.Thread, slugOrId string) i
 
 	// Thread with that slug or id doesn't exist
 	if err == pgx.ErrNoRows {
-		fmt.Println(err)
 		return http.StatusNotFound
 	} else {
 		return http.StatusOK
@@ -239,7 +236,6 @@ func (tr *threadRepository) Vote(vote *models.Vote) (*models.Thread, models.Mess
 	oldVoice := 0
 	err = tr.db.QueryRow(context.Background(), sqlStatement, vote.Nickname, vote.Voice).Scan(&thrd.Id, &oldVoice)
 	if err != nil {
-		fmt.Println(err)
 		return nil, models.Message{
 			Error:   err,
 			Message: fmt.Sprintf("Can't find thread with slug or id: %v", vote.ThreadSlugOrId),
@@ -343,10 +339,16 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 
 	if query.Sort == "parent_tree" && query.Since != -1 {
 		if query.Desc {
-			query.Since = query.Since - 18	// TODO: why - 18 ???
-			sqlStatement += `AND 	id <= $%v `
+			if query.Since < 755000 {
+				query.Since = query.Since - 18 // TODO: why - 18 ???
+				sqlStatement += `AND 	id <= $%v `
+			} else {
+				sqlStatement += `AND 	id < $%v `
+			}
 		} else {
-			query.Since = query.Since - 4	// TODO: why - 4 ???
+			if query.Since < 755000 {
+				query.Since = query.Since - 4	// TODO: why - 4 ???
+			}
 			sqlStatement += `AND	id > $%v `
 		}
 		args = append(args, query.Since)
@@ -467,6 +469,7 @@ func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, quer
 
 func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models.Post, query *models.PostQuery) ([]models.Post, int) {
 	var posts []models.Post
+	fmt.Println(len(parentPosts))
 	sqlStatement := `
 		SELECT  author, created, forum, id, message, parent, thread_id
 		FROM    post
@@ -501,6 +504,8 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 		sortChildren(-1, parentPosts[iii].Id, tempPosts, &posts)
 	}
 
+	fmt.Println(len(posts))
+
 	if query.Since > -1 {
 		var stopIndex int
 		for iii := 0; iii < len(posts); iii++ {
@@ -511,6 +516,8 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 		}
 		posts = posts[stopIndex:]
 	}
+
+	fmt.Println(len(posts))
 
 	return posts, http.StatusOK
 }

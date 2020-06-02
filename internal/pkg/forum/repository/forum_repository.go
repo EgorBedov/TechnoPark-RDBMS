@@ -63,7 +63,6 @@ func (fr *forumRepository) CreateForum(frm *models.Forum) models.Message {
 		RETURNING
 			usr;`
 	if err := fr.db.QueryRow(context.Background(), sqlStatement, frm.Title, frm.Usr, frm.Slug).Scan(&frm.Usr); err != nil {
-		fmt.Println(err)
 		return models.Message{
 			Error:   nil,
 			Message: fmt.Sprintf("Can't find user with nickname: %v", *frm.Usr),
@@ -94,7 +93,6 @@ func (fr *forumRepository) GetInfo(frm *models.Forum) int {
 
 	// User with that nickname doesn't exist
 	if err == pgx.ErrNoRows {
-		fmt.Println(err)
 		return http.StatusNotFound
 	} else {
 		return http.StatusOK
@@ -150,7 +148,6 @@ func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 		&thrd.Id,
 		&thrd.Forum)
 	if err != nil {
-		fmt.Println(err)
 		return http.StatusNotFound			// User not found
 	} else {
 		return http.StatusCreated			// All okay
