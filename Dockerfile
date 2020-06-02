@@ -47,6 +47,25 @@ RUN echo "synchronous_commit = off" >> /etc/postgresql/$PGVERSION/main/postgresq
 
 RUN echo "max_connections = 100" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
 
+# Memory
+RUN echo "effective_cache_size = 1536MB" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+RUN echo "wal_buffers = 1MB" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+RUN echo "shared_buffers = 512MB" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+RUN echo "work_mem = 8MB" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+RUN echo "maintenance_work_mem = 128MB" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+
+# Costs
+RUN echo "cpu_tuple_cost = 0.0030" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+RUN echo "cpu_index_tuple_cost = 0.0010" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+RUN echo "cpu_operator_cost = 0.0005" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+
+# Disable logging
+RUN echo "log_statement = none" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+RUN echo "log_duration = off" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+RUN echo "log_lock_waits = on" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+RUN echo "log_min_duration_statement = 50" >> /etc/postgresql/$PGVERSION/main/postgresql.conf
+
+
 # Expose the PostgreSQL port
 VOLUME  ["/etc/postgresql", "/var/log/postgresql", "/var/lib/postgresql"]
 EXPOSE 5432

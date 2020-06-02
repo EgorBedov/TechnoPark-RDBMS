@@ -3,7 +3,7 @@ BEGIN;
 CREATE EXTENSION IF NOT EXISTS citext;
 SET enable_seqscan TO off;
 
-CREATE TABLE IF NOT EXISTS usr
+CREATE UNLOGGED TABLE IF NOT EXISTS usr
 (
     nickname    citext              PRIMARY KEY NOT NULL UNIQUE,
     fullname    VARCHAR(256)        NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS usr
     email       citext              UNIQUE
 );
 
-CREATE TABLE IF NOT EXISTS forum
+CREATE UNLOGGED TABLE IF NOT EXISTS forum
 (
     title       VARCHAR(1024)       NOT NULL,
     usr         citext              NOT NULL REFERENCES usr (nickname) ON DELETE CASCADE,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS forum
 
 CREATE INDEX ON forum (usr);
 
-CREATE TABLE IF NOT EXISTS thread
+CREATE UNLOGGED TABLE IF NOT EXISTS thread
 (
     id          SERIAL              PRIMARY KEY,
     title       VARCHAR(1024)       NOT NULL,
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS thread
 CREATE INDEX ON thread (forum, created);
 CREATE INDEX ON thread (forum, author);
 
-CREATE TABLE IF NOT EXISTS post
+CREATE UNLOGGED TABLE IF NOT EXISTS post
 (
     id          BIGSERIAL           PRIMARY KEY,
     parent      BIGINT              DEFAULT 0,
@@ -59,7 +59,7 @@ CREATE INDEX ON post (thread_id)
 WHERE parent = 0;
 
 
-CREATE TABLE IF NOT EXISTS vote
+CREATE UNLOGGED TABLE IF NOT EXISTS vote
 (
     nickname    citext      NOT NULL REFERENCES usr (nickname) ON DELETE CASCADE,
     voice       INTEGER     NOT NULL,
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS vote
 
 
 -- Table that stores max id from every table
-CREATE TABLE IF NOT EXISTS summary
+CREATE UNLOGGED TABLE IF NOT EXISTS summary
 (
     users       INTEGER             NOT NULL DEFAULT 0,
     forums      INTEGER             NOT NULL DEFAULT 0,
