@@ -339,14 +339,14 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 
 	if query.Sort == "parent_tree" && query.Since != -1 {
 		if query.Desc {
-			if query.Since < 755000 {
+			if query.Since < 5000 {
 				query.Since = query.Since - 18 // TODO: why - 18 ???
 				sqlStatement += `AND 	id <= $%v `
 			} else {
 				sqlStatement += `AND 	id < $%v `
 			}
 		} else {
-			if query.Since < 755000 {
+			if query.Since < 5000 {
 				query.Since = query.Since - 4	// TODO: why - 4 ???
 			}
 			sqlStatement += `AND	id > $%v `
@@ -369,28 +369,28 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 	}
 	sqlStatement = fmt.Sprintf(sqlStatement, indices...)
 
-	rows, err := tr.db.Query(context.Background(), sqlStatement, args...)
+	rows, _ := tr.db.Query(context.Background(), sqlStatement, args...)
 
-	if err != nil {
-		fmt.Println("ERROR tree 1", err)
-		fmt.Println(rows)
-		return nil, http.StatusInternalServerError
-	}
+	//if err != nil {
+	//	fmt.Println("ERROR tree 1", err)
+	//	fmt.Println(rows)
+	//	return nil, http.StatusInternalServerError
+	//}
 
 	var parentPosts []models.Post
 	for rows.Next() {
 		tempPost := models.Post{}
-		err = rows.Scan(
+		_ = rows.Scan(
 			&tempPost.Author,
 			&tempPost.Created,
 			&tempPost.Forum,
 			&tempPost.Id,
 			&tempPost.Message,
 			&tempPost.ThreadId)
-		if err != nil {
-			//log.Println("ERROR tree 2", err)
-			return nil, http.StatusInternalServerError
-		}
+		//if err != nil {
+		//	log.Println("ERROR tree 2", err)
+			//return nil, http.StatusInternalServerError
+		//}
 		parentPosts = append(parentPosts, tempPost)
 	}
 
@@ -416,15 +416,15 @@ func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, quer
 		if !query.Desc {
 			posts = append(posts, parentPosts[iii])
 		}
-		rows, err := tr.db.Query(context.Background(), sqlStatement, parentPosts[iii].Id)
-		if err != nil {
-			fmt.Println("ERROR tree 3", err)
-			fmt.Println(rows)
-			return nil, http.StatusInternalServerError
-		}
+		rows, _ := tr.db.Query(context.Background(), sqlStatement, parentPosts[iii].Id)
+		//if err != nil {
+		//	fmt.Println("ERROR tree 3", err)
+		//	fmt.Println(rows)
+		//	return nil, http.StatusInternalServerError
+		//}
 		var tempPosts []models.Post
 		for rows.Next() {
-			err = rows.Scan(
+			_ = rows.Scan(
 				&tempPost.Author,
 				&tempPost.Created,
 				&tempPost.Forum,
@@ -432,10 +432,10 @@ func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, quer
 				&tempPost.Message,
 				&tempPost.Parent,
 				&tempPost.ThreadId)
-			if err != nil {
-				fmt.Println("ERROR tree 4", err)
-				return nil, http.StatusInternalServerError
-			}
+			//if err != nil {
+			//	fmt.Println("ERROR tree 4", err)
+			//	return nil, http.StatusInternalServerError
+			//}
 			tempPosts = append(tempPosts, tempPost)
 		}
 		if query.Desc {
@@ -479,14 +479,14 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 	for iii := 0; iii < len(parentPosts); iii++ {
 		var tempPosts []models.Post
 		posts = append(posts, parentPosts[iii])
-		rows, err := tr.db.Query(context.Background(), sqlStatement, parentPosts[iii].Id)
-		if err != nil {
-			fmt.Println("ERROR tree 3", err)
-			fmt.Println(rows)
-			return nil, http.StatusInternalServerError
-		}
+		rows, _ := tr.db.Query(context.Background(), sqlStatement, parentPosts[iii].Id)
+		//if err != nil {
+		//	fmt.Println("ERROR tree 3", err)
+		//	fmt.Println(rows)
+		//	return nil, http.StatusInternalServerError
+		//}
 		for rows.Next() {
-			err = rows.Scan(
+			_ = rows.Scan(
 				&tempPost.Author,
 				&tempPost.Created,
 				&tempPost.Forum,
@@ -494,10 +494,10 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 				&tempPost.Message,
 				&tempPost.Parent,
 				&tempPost.ThreadId)
-			if err != nil {
-				fmt.Println("ERROR tree 4", err)
-				return nil, http.StatusInternalServerError
-			}
+			//if err != nil {
+			//	fmt.Println("ERROR tree 4", err)
+			//	return nil, http.StatusInternalServerError
+			//}
 			tempPosts = append(tempPosts, tempPost)
 		}
 		sortChildren(-1, parentPosts[iii].Id, tempPosts, &posts)
