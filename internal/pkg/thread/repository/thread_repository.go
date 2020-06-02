@@ -19,7 +19,7 @@ const (
 	QueryInsertPosts = `
 		INSERT INTO	post (parent, author, message, forum, thread_id, created, root)
 		VALUES		($1, $2, $3, $4, $5, $6, $7)
-		RETURNING 	id;`
+		RETURNING 	id, created;`
 	QueryIncrementPostsInForum = `
 		UPDATE	forum
 		SET		posts = posts + $1
@@ -75,7 +75,7 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 	defer br.Close()
 
 	for iii := 0; iii < len(posts); iii++ {
-		err = br.QueryRow().Scan(&posts[iii].Id)
+		err = br.QueryRow().Scan(&posts[iii].Id, &posts[iii].Created)
 		if err != nil {
 			fmt.Println(err)
 			return models.CreateError(err, err.Error(), http.StatusNotFound)

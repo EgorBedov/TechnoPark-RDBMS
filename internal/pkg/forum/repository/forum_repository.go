@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
+	"time"
+
 	//"log"
 	"net/http"
 )
@@ -239,6 +241,8 @@ func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int)
 		FROM	thread
 		WHERE	forum = $1 `
 	if len(query.Since) != 0 {
+		t, _ := time.Parse(time.RFC3339Nano, query.Since)
+		query.Since = t.UTC().Format(time.RFC3339Nano)
 		if query.Desc {
 			sqlStatement += fmt.Sprintf("AND created <= timestamp '%v' ", query.Since)
 		} else {
