@@ -469,7 +469,6 @@ func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, quer
 
 func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models.Post, query *models.PostQuery) ([]models.Post, int) {
 	var posts []models.Post
-	fmt.Println(len(parentPosts))
 	sqlStatement := `
 		SELECT  author, created, forum, id, message, parent, thread_id
 		FROM    post
@@ -504,8 +503,6 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 		sortChildren(-1, parentPosts[iii].Id, tempPosts, &posts)
 	}
 
-	fmt.Println(len(posts))
-
 	if query.Since > -1 {
 		var stopIndex int
 		for iii := 0; iii < len(posts); iii++ {
@@ -516,8 +513,6 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 		}
 		posts = posts[stopIndex:]
 	}
-
-	fmt.Println(len(posts))
 
 	return posts, http.StatusOK
 }
