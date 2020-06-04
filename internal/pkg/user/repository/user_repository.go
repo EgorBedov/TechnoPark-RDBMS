@@ -92,7 +92,7 @@ func (ur *userRepository) GetInfo(user *models.User) int {
 
 	// User with that nickname doesn't exist
 	if err == pgx.ErrNoRows {
-		fmt.Println(err)
+		//fmt.Println(err)
 		return http.StatusNotFound
 	} else {
 		return http.StatusOK
@@ -133,7 +133,7 @@ func (ur *userRepository) PostInfo(user *models.User) (int, *models.Message) {
 		&user.Email)
 
 	if err != nil {
-		fmt.Println(err)
+		//fmt.Println(err)
 		return http.StatusNotFound, &models.Message{Message:"Can't find user by nickname: " + user.NickName}
 	} else {
 		return http.StatusOK, nil

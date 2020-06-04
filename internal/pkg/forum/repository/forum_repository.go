@@ -8,11 +8,15 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
+	"sync"
 	"time"
 
 	//"log"
 	"net/http"
 )
+
+var once1 sync.Once
+var once2 sync.Once
 
 type forumRepository struct {
 	db *pgxpool.Pool
@@ -201,7 +205,7 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 		%v;`, subWhere, subCondition, subWhere, subCondition, condition)
 	rows, err := fr.db.Query(context.Background(), sqlStatement, query.Slug, query.Limit)
 	if err != nil {
-		fmt.Println(err)
+		//fmt.Println(err)
 		return nil, http.StatusNotFound
 	}
 
@@ -218,6 +222,28 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 			return nil, http.StatusInternalServerError
 		}
 		users = append(users, tempUser)
+	}
+
+	if query.Limit == 17 {
+		once1.Do(func() {
+			fmt.Println("EXPLAIN ANALYSE")
+			sqlStatement = `EXPLAIN ANALYSE
+		` + sqlStatement
+			rows, err := fr.db.Query(context.Background(), sqlStatement, query.Slug, query.Limit)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				var row string
+				for rows.Next() {
+					err = rows.Scan(&row)
+					if err != nil {
+						fmt.Println(err)
+					} else {
+						fmt.Println(row)
+					}
+				}
+			}
+		})
 	}
 
 	return users, http.StatusOK
@@ -274,6 +300,28 @@ func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int)
 			return nil, http.StatusInternalServerError
 		}
 		threads = append(threads, tempThread)
+	}
+
+	if query.Limit == 15 {
+		once2.Do(func() {
+			fmt.Println("EXPLAIN ANALYSE")
+			sqlStatement = `EXPLAIN ANALYSE
+		` + sqlStatement
+			rows, err := fr.db.Query(context.Background(), sqlStatement, query.Slug, query.Limit)
+			if err != nil {
+				fmt.Println(err)
+			} else {
+				var row string
+				for rows.Next() {
+					err = rows.Scan(&row)
+					if err != nil {
+						fmt.Println(err)
+					} else {
+						fmt.Println(row)
+					}
+				}
+			}
+		})
 	}
 
 	return threads, http.StatusOK

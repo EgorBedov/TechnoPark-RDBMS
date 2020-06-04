@@ -1,7 +1,6 @@
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS citext;
-SET enable_seqscan TO off;
 
 CREATE UNLOGGED TABLE IF NOT EXISTS usr
 (
