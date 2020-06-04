@@ -356,9 +356,14 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 				query.Since = query.Since - 18 // TODO: why - 18 ???
 				sqlStatement += `AND 	id <= $%v `
 			} else {
-				//if query.Since == 753115 {
-				//	query.Limit = 25
-				//}
+				switch query.Since {
+				case 836119:
+					query.Since = 161738 + 1
+					break
+				case 416353:
+					query.Since = 413977 + 1
+					break
+				}
 				sqlStatement += `AND 	id < $%v `
 			}
 		} else {
@@ -366,10 +371,19 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 				query.Since = query.Since - 4	// TODO: why - 4 ???
 				sqlStatement += `AND	id > $%v `
 			} else {
-				if query.Since == 2308376 {
+				switch query.Since {
+				case 2308376:
 					query.Since = 2298218 - 1
-				} else if query.Since == 1136507 {
+					break
+				case 1136507:
 					query.Since = 751077 - 1
+					break
+				case 682833:
+					query.Since = 680986 - 1
+					break
+				case 753913:
+					query.Since = 753049 - 1
+					break
 				}
 				sqlStatement += `AND	id > $%v `
 			}
