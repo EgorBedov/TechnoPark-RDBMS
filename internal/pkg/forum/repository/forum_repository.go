@@ -9,16 +9,11 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"log"
-	"sync"
 	"time"
 
 	//"log"
 	"net/http"
 )
-
-var once1 sync.Once
-var once2 sync.Once
 
 type forumRepository struct {
 	db *pgxpool.Pool
@@ -195,38 +190,12 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 	var users []models.User
 	for rows.Next() {
 		tempUser := models.User{}
-		err = rows.Scan(
+		_ = rows.Scan(
 			&tempUser.NickName,
 			&tempUser.FullName,
 			&tempUser.About,
 			&tempUser.Email)
-		if err != nil {
-			//log.Println("ERROR: Forum Repo GetUsers")
-			return nil, http.StatusInternalServerError
-		}
 		users = append(users, tempUser)
-	}
-
-	if query.Limit == 17 {
-		once1.Do(func() {
-			fmt.Println("EXPLAIN ANALYSE")
-			sqlStatement = `EXPLAIN ANALYSE
-		` + sqlStatement
-			rows, err := fr.db.Query(context.Background(), sqlStatement, query.Slug, query.Limit)
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				var row string
-				for rows.Next() {
-					err = rows.Scan(&row)
-					if err != nil {
-						fmt.Println(err)
-					} else {
-						fmt.Println(row)
-					}
-				}
-			}
-		})
 	}
 
 	return users, http.StatusOK
@@ -261,16 +230,12 @@ func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int)
 	} else {
 		sqlStatement += "ORDER BY created ASC LIMIT $2;"
 	}
-	rows, err := fr.db.Query(context.Background(), sqlStatement, query.Slug, query.Limit)
-	if err != nil {
-		log.Println("ERROR: Forum Repo GetThreads", err)
-		return nil, http.StatusBadRequest
-	}
+	rows, _ := fr.db.Query(context.Background(), sqlStatement, query.Slug, query.Limit)
 
 	var threads []models.Thread
 	for rows.Next() {
 		tempThread := models.Thread{}
-		err = rows.Scan(
+		_ = rows.Scan(
 			&tempThread.Id,
 			&tempThread.Title,
 			&tempThread.Author,
@@ -279,33 +244,7 @@ func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int)
 			&tempThread.Votes,
 			&tempThread.Slug,
 			&tempThread.Created)
-		if err != nil {
-			log.Println("ERROR: Forum Repo GetThreads", err)
-			return nil, http.StatusInternalServerError
-		}
 		threads = append(threads, tempThread)
-	}
-
-	if query.Limit == 15 {
-		once2.Do(func() {
-			fmt.Println("EXPLAIN ANALYSE")
-			sqlStatement = `EXPLAIN ANALYSE
-		` + sqlStatement
-			rows, err := fr.db.Query(context.Background(), sqlStatement, query.Slug, query.Limit)
-			if err != nil {
-				fmt.Println(err)
-			} else {
-				var row string
-				for rows.Next() {
-					err = rows.Scan(&row)
-					if err != nil {
-						fmt.Println(err)
-					} else {
-						fmt.Println(row)
-					}
-				}
-			}
-		})
 	}
 
 	return threads, http.StatusOK

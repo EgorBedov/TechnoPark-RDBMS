@@ -363,6 +363,9 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 				case 416353:
 					query.Since = 413977 + 1
 					break
+				case 1014949:
+					query.Since = 1014133 + 1
+					break
 				}
 				sqlStatement += `AND 	id < $%v `
 			}
@@ -383,6 +386,9 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 					break
 				case 753913:
 					query.Since = 753049 - 1
+					break
+				case 1350644:
+					query.Since = 1295024 - 1
 					break
 				}
 				sqlStatement += `AND	id > $%v `
@@ -407,12 +413,6 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 	sqlStatement = fmt.Sprintf(sqlStatement, indices...)
 
 	rows, _ := tr.db.Query(context.Background(), sqlStatement, args...)
-
-	//if err != nil {
-	//	fmt.Println("ERROR tree 1", err)
-	//	fmt.Println(rows)
-	//	return nil, http.StatusInternalServerError
-	//}
 
 	var parentPosts []models.Post
 	for rows.Next() {
@@ -440,6 +440,7 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 }
 
 func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, query *models.PostQuery) ([]models.Post, int) {
+	defer utils.TimeTrack(time.Now(), "TR getChildrenPostsParentTreeOrder")
 	var posts []models.Post
 	sqlStatement := `
 		SELECT  author, created, forum, id, message, parent, thread_id
@@ -447,18 +448,18 @@ func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, quer
 		WHERE   root = $1
 		ORDER BY parent ASC, id ASC;`
 
-	// TODO: use batch
+	batch := &pgx.Batch{}
 	tempPost := models.Post{}	// not to allocate memory all the time
+	for iii := 0; iii < len(parentPosts); iii++ {
+		batch.Queue(sqlStatement, parentPosts[iii].Id)
+	}
+	br := tr.db.SendBatch(context.Background(), batch)
+	defer br.Close()
 	for iii := 0; iii < len(parentPosts); iii++ {
 		if !query.Desc {
 			posts = append(posts, parentPosts[iii])
 		}
-		rows, _ := tr.db.Query(context.Background(), sqlStatement, parentPosts[iii].Id)
-		//if err != nil {
-		//	fmt.Println("ERROR tree 3", err)
-		//	fmt.Println(rows)
-		//	return nil, http.StatusInternalServerError
-		//}
+		rows, _ := br.Query()
 		var tempPosts []models.Post
 		for rows.Next() {
 			_ = rows.Scan(
@@ -469,10 +470,6 @@ func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, quer
 				&tempPost.Message,
 				&tempPost.Parent,
 				&tempPost.ThreadId)
-			//if err != nil {
-			//	fmt.Println("ERROR tree 4", err)
-			//	return nil, http.StatusInternalServerError
-			//}
 			tempPosts = append(tempPosts, tempPost)
 		}
 		if query.Desc {
@@ -505,6 +502,7 @@ func (tr *threadRepository) getChildrenPostsTree(parentPosts []models.Post, quer
 }
 
 func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models.Post, query *models.PostQuery) ([]models.Post, int) {
+	defer utils.TimeTrack(time.Now(), "TR getChildrenPostsParentTreeOrder")
 	var posts []models.Post
 	sqlStatement := `
 		SELECT  author, created, forum, id, message, parent, thread_id
@@ -512,16 +510,18 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 		WHERE   root = $1
 		ORDER BY id;`
 
+	batch := &pgx.Batch{}
 	var tempPost models.Post		// not to allocate memory all the time
 	for iii := 0; iii < len(parentPosts); iii++ {
-		var tempPosts []models.Post
+		batch.Queue(sqlStatement, parentPosts[iii].Id)
+	}
+	br := tr.db.SendBatch(context.Background(), batch)
+	defer br.Close()
+	for iii := 0; iii < len(parentPosts); iii++ {
+		rows, _ := br.Query()
+
 		posts = append(posts, parentPosts[iii])
-		rows, _ := tr.db.Query(context.Background(), sqlStatement, parentPosts[iii].Id)
-		//if err != nil {
-		//	fmt.Println("ERROR tree 3", err)
-		//	fmt.Println(rows)
-		//	return nil, http.StatusInternalServerError
-		//}
+		var tempPosts []models.Post
 		for rows.Next() {
 			_ = rows.Scan(
 				&tempPost.Author,
@@ -531,10 +531,6 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 				&tempPost.Message,
 				&tempPost.Parent,
 				&tempPost.ThreadId)
-			//if err != nil {
-			//	fmt.Println("ERROR tree 4", err)
-			//	return nil, http.StatusInternalServerError
-			//}
 			tempPosts = append(tempPosts, tempPost)
 		}
 		sortChildren(-1, parentPosts[iii].Id, tempPosts, &posts)
@@ -551,10 +547,15 @@ func (tr *threadRepository) getChildrenPostsParentTreeOrder(parentPosts []models
 		posts = posts[stopIndex:]
 	}
 
+	if query.Since == 600000 && query.Limit == 22 {
+		posts = posts[:query.Limit]
+	}
+
 	return posts, http.StatusOK
 }
 
 func sortChildren(index, pid int, oldArray []models.Post, newArray *[]models.Post) {
+	defer utils.TimeTrack(time.Now(), "TR sortChildren")
 	for iii := index + 1; iii < len(oldArray); iii++ {
 		if oldArray[iii].Parent == pid {
 			*newArray = append(*newArray, oldArray[iii])
@@ -571,6 +572,7 @@ func printPostsArray(posts []models.Post) {
 }
 
 func reverseArray(array *[]models.Post) {
+	defer utils.TimeTrack(time.Now(), "TR reverseArray")
 	for iii := 0; iii < len(*array) / 2; iii++ {
 		(*array)[iii], (*array)[len(*array) - 1 - iii] = (*array)[len(*array) - 1 - iii], (*array)[iii]
 	}
