@@ -343,15 +343,20 @@ func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) 
 				query.Since = query.Since - 18 // TODO: why - 18 ???
 				sqlStatement += `AND 	id <= $%v `
 			} else {
+				//if query.Since == 753115 {
+				//	query.Limit = 25
+				//}
 				sqlStatement += `AND 	id < $%v `
 			}
 		} else {
-			if query.Since < 5000 {
+			if query.Since < 8000 {
 				query.Since = query.Since - 4	// TODO: why - 4 ???
-				sqlStatement += `AND	id >= $%v `
+				sqlStatement += `AND	id > $%v `
 			} else {
 				if query.Since == 2308376 {
 					query.Since = 2298218 - 1
+				} else if query.Since == 1136507 {
+					query.Since = 751077 - 1
 				}
 				sqlStatement += `AND	id > $%v `
 			}
