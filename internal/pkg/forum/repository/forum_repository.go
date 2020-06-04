@@ -4,6 +4,8 @@ import (
 	"context"
 	"egogoger/internal/pkg/forum"
 	"egogoger/internal/pkg/models"
+	threadRepo "egogoger/internal/pkg/thread/repository"
+	"egogoger/internal/pkg/utils"
 	"fmt"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -106,12 +108,9 @@ func (fr *forumRepository) GetInfo(frm *models.Forum) int {
 func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 	if thrd.Slug != nil {
 		sqlStatement := `
-			SELECT
-				id, title, author, forum, message, votes, slug, created
-			FROM
-				thread
-			WHERE
-				slug = $1;`
+			SELECT	id, title, author, forum, message, votes, slug, created
+			FROM	thread
+			WHERE	slug = $1;`
 		rows := fr.db.QueryRow(context.Background(), sqlStatement, thrd.Slug)
 		tempThread := models.Thread{}
 		err := rows.Scan(
@@ -133,20 +132,13 @@ func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 
 	// First entry of such combination
 	sqlStatement := `
-		INSERT INTO
-			thread (title, author, forum, message, slug, created)
-		SELECT
-			$1, U.nickname, F.slug, $4, $5, $6
-		FROM
-			usr U
-			JOIN
-				forum F
-				ON
-					F.slug = $3
-		WHERE
-			U.nickname = $2
-		RETURNING
-			id, forum;`
+		INSERT INTO		thread (title, author, forum, message, slug, created)
+		SELECT			$1, U.nickname, F.slug, $4, $5, $6
+		FROM			usr U
+		JOIN			forum F
+		ON				F.slug = $3
+		WHERE			U.nickname = $2
+		RETURNING		id, forum;`
 	row := fr.db.QueryRow(context.Background(), sqlStatement, thrd.Title, thrd.Author, thrd.Forum, thrd.Message, thrd.Slug, thrd.Created)
 	err := row.Scan(
 		&thrd.Id,
@@ -154,11 +146,13 @@ func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 	if err != nil {
 		return http.StatusNotFound			// User not found
 	} else {
+		_, _ = fr.db.Exec(context.Background(), threadRepo.QueryInsertAuthor, thrd.Forum, thrd.Author)
 		return http.StatusCreated			// All okay
 	}
 }
 
 func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
+	defer utils.TimeTrack(time.Now(), "FR GetUsers")
 	if cTag, err := fr.db.Exec(context.Background(), "SELECT 1 FROM forum WHERE slug = $1;", query.Slug); err != nil || cTag.RowsAffected() == 0 {
 		return nil, http.StatusNotFound
 	}
@@ -166,43 +160,32 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 	condition := ""
 	subWhere := ""
 	subCondition := ""
-
 	if query.Desc {
 		if query.Since != "" {
-			condition += fmt.Sprintf("WHERE nickname < '%v' ", query.Since)
 			subWhere = fmt.Sprintf("AND author < '%v' ", query.Since)
 		}
-		condition += "ORDER BY nickname DESC LIMIT $2"
 		subCondition = "ORDER BY author DESC LIMIT $2"
+		condition += "ORDER BY nickname DESC LIMIT $2"
 	} else {
 		if query.Since != "" {
-			condition += fmt.Sprintf("WHERE nickname > '%v' ", query.Since)
 			subWhere = fmt.Sprintf("AND author > '%v' ", query.Since)
 		}
-		condition += "ORDER BY nickname ASC LIMIT $2"
 		subCondition = "ORDER BY author ASC LIMIT $2"
+		condition += "ORDER BY nickname ASC LIMIT $2"
 	}
 
 	sqlStatement := fmt.Sprintf(`
-		SELECT DISTINCT nickname, fullname, about, email
-		FROM ((
-				SELECT      author
-				FROM        thread
-				WHERE       forum = $1
-				%v
-				GROUP BY    author
-				%v
-			) UNION DISTINCT (
-				SELECT      author
-				FROM        post
-				WHERE       forum = $1
-				%v
-				GROUP BY    author
-				%v
-		)) AS kek
+		SELECT  nickname, fullname, about, email
+		FROM (
+			SELECT  author
+			FROM    forum_authors
+			WHERE   forum = $1
+			%v
+			%v
+		) AS A
 		JOIN    usr U
-		ON      kek.author = U.nickname
-		%v;`, subWhere, subCondition, subWhere, subCondition, condition)
+		ON      A.author = U.nickname
+		%v;`, subWhere, subCondition, condition)
 	rows, err := fr.db.Query(context.Background(), sqlStatement, query.Slug, query.Limit)
 	if err != nil {
 		//fmt.Println(err)
@@ -250,6 +233,7 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 }
 
 func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int) {
+	defer utils.TimeTrack(time.Now(), "FR GetThreads")
 	// Check for forum existence (i dunno how to do it otherwise)
 	sqlStatement := `
 		SELECT	1

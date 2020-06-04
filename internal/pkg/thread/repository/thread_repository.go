@@ -5,6 +5,7 @@ import (
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/thread"
 	userRepository "egogoger/internal/pkg/user/repository"
+	"egogoger/internal/pkg/utils"
 	"fmt"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -24,6 +25,11 @@ const (
 		UPDATE	forum
 		SET		posts = posts + $1
         WHERE	slug = $2;`
+	QueryInsertAuthor = `
+		INSERT INTO	forum_authors (forum, author)
+		VALUES		($1, $2)
+		ON CONFLICT ON CONSTRAINT unique_author
+		DO NOTHING;`
 )
 
 type threadRepository struct {
@@ -36,6 +42,7 @@ func NewPgxThreadRepository(db *pgxpool.Pool) thread.Repository {
 
 func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum string) models.Message {
 	batch := &pgx.Batch{}
+	batch2 := &pgx.Batch{}
 	var err error
 	timeNow := time.Now().UTC()
 
@@ -68,9 +75,12 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 		// Set the same time for every post
 		posts[iii].Created = timeNow
 
+		batch2.Queue(QueryInsertAuthor, forum, posts[iii].Author)
 		batch.Queue(QueryInsertPosts, posts[iii].Parent, posts[iii].Author, posts[iii].Message, forum, threadId, posts[iii].Created, root)
 	}
 
+	br2 := tr.db.SendBatch(context.Background(), batch2)
+	defer br2.Close()
 	br := tr.db.SendBatch(context.Background(), batch)
 	defer br.Close()
 
@@ -86,6 +96,8 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 	if cTag, err := tr.db.Exec(context.Background(), QueryIncrementPostsInForum, len(posts), posts[0].Forum); err != nil || cTag.RowsAffected() == 0 {
 		return models.CreateError(err, "Error incrementing posts in forum", http.StatusInternalServerError)
 	}
+
+
 
 	return models.CreateSuccess(http.StatusCreated)
 }
@@ -326,6 +338,7 @@ func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) 
 
 // Bitmap HEAP?
 func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) ([]models.Post, int) {
+	defer utils.TimeTrack(time.Now(), "TR getPostsTree")
 	// Get all root posts
 	sqlStatement := `
 		SELECT 	author, created, forum, id, message, thread_id

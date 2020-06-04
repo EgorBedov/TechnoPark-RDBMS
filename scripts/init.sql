@@ -10,6 +10,8 @@ CREATE UNLOGGED TABLE IF NOT EXISTS usr
     email       citext              UNIQUE
 );
 
+CREATE INDEX ON usr (nickname DESC);
+
 CREATE UNLOGGED TABLE IF NOT EXISTS forum
 (
     title       VARCHAR(1024)       NOT NULL,
@@ -56,6 +58,15 @@ CREATE INDEX ON post (root);
 CREATE INDEX ON post (forum, author);
 CREATE INDEX ON post (thread_id)
 WHERE parent = 0;
+
+-- Stores authors of posts and threads in a forum
+CREATE UNLOGGED TABLE IF NOT EXISTS forum_authors (
+    forum       citext          NOT NULL,
+    author      citext          NOT NULL,
+    CONSTRAINT unique_author UNIQUE (forum, author)
+);
+CREATE INDEX ON forum_authors (forum, author ASC);
+CREATE INDEX ON forum_authors (forum, author DESC);
 
 
 CREATE UNLOGGED TABLE IF NOT EXISTS vote
