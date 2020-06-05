@@ -40,7 +40,7 @@ CREATE INDEX ON thread (forum, author);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS post
 (
-    id          INTEGER             PRIMARY KEY,
+    id          SERIAL              NOT NULL PRIMARY KEY,
     parent      INTEGER             DEFAULT 0,
     author      citext              REFERENCES usr (nickname) ON DELETE CASCADE,
     message     TEXT                NOT NULL,

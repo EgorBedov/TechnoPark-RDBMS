@@ -34,9 +34,9 @@ const (
 		FROM 	post
 		WHERE 	id = $1
 		AND 	thread_id = $2`
-	QuerySelectMaxIDFromPosts = `
-		SELECT  MAX(id)
-		FROM    post;`
+	QuerySelectIDsForPosts = `
+		SELECT 	nextval(pg_get_serial_sequence('post', 'id'))
+		FROM 	generate_series(1, $1);`
 	QuerySelectPostWhere = `
 		SELECT  author, created, forum, id, message, thread_id, parent
 		FROM    post
@@ -57,24 +57,27 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 	timeNow := time.Now().UTC()
 
 	// Get id's for future posts
-	var maxID int
-	_ = tr.db.QueryRow(context.Background(), QuerySelectMaxIDFromPosts).Scan(&maxID)
-	maxID += 1
+	var IDs []int
+	rows, _ := tr.db.Query(context.Background(), QuerySelectIDsForPosts, len(posts))
+	defer rows.Close()
+	for rows.Next() {
+		IDs = append(IDs, 0)
+		_ = rows.Scan(&IDs[len(IDs) - 1])
+	}
 
 	pathMap := make(map[int][]int)
 	var tmpParentPath []int
 	for iii := 0; iii < len(posts); iii++ {
-		nextID := maxID + iii
 		if posts[iii].Parent != 0 {
 			// Check if parent is in the same thread
 			err := tr.db.QueryRow(context.Background(), QuerySelectParentPost, posts[iii].Parent, threadId).Scan(&tmpParentPath)
 			if err != nil {
 				return models.CreateError(err, "Parent post was created in another thread", http.StatusConflict)
 			} else {
-				pathMap[posts[iii].Parent] = append(tmpParentPath, nextID)
+				pathMap[posts[iii].Parent] = append(tmpParentPath, IDs[iii])
 			}
 		} else {
-			pathMap[posts[iii].Parent] = []int{nextID}
+			pathMap[posts[iii].Parent] = []int{IDs[iii]}
 		}
 
 		// Check for author
@@ -85,7 +88,7 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 			return models.CreateError(err, fmt.Sprintf("Can't find post author by nickname: %v", posts[iii].Author), http.StatusNotFound)
 		}
 
-		posts[iii].Id = nextID
+		posts[iii].Id = IDs[iii]
 		posts[iii].Created = timeNow
 		posts[iii].Forum = forum
 		posts[iii].ThreadId = threadId
