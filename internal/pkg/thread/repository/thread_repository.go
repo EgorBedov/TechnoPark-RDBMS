@@ -110,6 +110,10 @@ func (tr *threadRepository) CreatePosts(posts []models.Post, threadId int, forum
 	br := tr.db.SendBatch(context.Background(), batch)
 	defer br.Close()
 
+	for iii := 0; iii < len(posts); iii++ {
+		_ = br.QueryRow().Scan(&posts[iii].Created)
+	}
+
 	_, _ = tr.db.Exec(context.Background(), QueryIncrementPostsInForum, len(posts), posts[0].Forum)
 	return models.CreateSuccess(http.StatusCreated)
 }
