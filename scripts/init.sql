@@ -40,24 +40,25 @@ CREATE INDEX ON thread (forum, author);
 
 CREATE UNLOGGED TABLE IF NOT EXISTS post
 (
-    id          BIGSERIAL           PRIMARY KEY,
-    parent      BIGINT              DEFAULT 0,
+    id          INTEGER             PRIMARY KEY,
+    parent      INTEGER             DEFAULT 0,
     author      citext              REFERENCES usr (nickname) ON DELETE CASCADE,
     message     TEXT                NOT NULL,
     isEdited    BOOLEAN             DEFAULT FALSE,
     forum       citext              REFERENCES forum (slug) ON DELETE CASCADE,
     thread_id   INTEGER             REFERENCES thread (id) ON DELETE CASCADE,
     created     TIMESTAMP           DEFAULT current_timestamp,
-    root        INTEGER             DEFAULT 0
+    path        INTEGER[]           NOT NULL DEFAULT ARRAY[0]
 );
 
 CREATE INDEX ON post USING HASH (forum);
-CREATE INDEX ON post (parent);
+-- CREATE INDEX ON post (parent);
 CREATE INDEX ON post (thread_id);
-CREATE INDEX ON post (root);
 CREATE INDEX ON post (forum, author);
-CREATE INDEX ON post (thread_id)
-WHERE parent = 0;
+CREATE INDEX ON post (thread_id) WHERE parent = 0;
+CREATE INDEX ON post (path);
+CREATE INDEX ON post ((path[1]));
+CREATE INDEX ON post (id, (path[1]));
 
 -- Stores authors of posts and threads in a forum
 CREATE UNLOGGED TABLE IF NOT EXISTS forum_authors (
@@ -90,8 +91,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS summary
 INSERT INTO summary DEFAULT VALUES;
 
 -- Change isEdited field on post on update
-DROP FUNCTION IF EXISTS trigger_update_post();
-CREATE FUNCTION trigger_update_post()
+CREATE OR REPLACE FUNCTION trigger_update_post()
     RETURNS trigger AS
     $BODY$
     BEGIN
@@ -109,8 +109,7 @@ CREATE TRIGGER update_post
 
 
 -- Increment threads on forum
-DROP FUNCTION IF EXISTS trigger_increment_threads();
-CREATE FUNCTION trigger_increment_threads()
+CREATE OR REPLACE FUNCTION trigger_increment_threads()
 RETURNS trigger AS
     $BODY$
     BEGIN

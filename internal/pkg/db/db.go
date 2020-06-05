@@ -39,3 +39,11 @@ func ConnectToDB() *pgxpool.Pool {
 	})
 	return db
 }
+
+func InsertPlaceholders(query string, length int) string {
+	var indices []interface{}
+	for iii := 0; iii < length; iii++ {
+		indices = append(indices, iii + 1)
+	}
+	return fmt.Sprintf(query, indices...)
+}
