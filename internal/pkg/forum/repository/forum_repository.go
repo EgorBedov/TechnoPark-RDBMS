@@ -5,7 +5,6 @@ import (
 	"egogoger/internal/pkg/forum"
 	"egogoger/internal/pkg/models"
 	threadRepo "egogoger/internal/pkg/thread/repository"
-	"egogoger/internal/pkg/utils"
 	"fmt"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -147,7 +146,6 @@ func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 }
 
 func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
-	defer utils.TimeTrack(time.Now(), "FR GetUsers")
 	if cTag, err := fr.db.Exec(context.Background(), "SELECT 1 FROM forum WHERE slug = $1;", query.Slug); err != nil || cTag.RowsAffected() == 0 {
 		return nil, http.StatusNotFound
 	}
@@ -202,7 +200,6 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 }
 
 func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int) {
-	defer utils.TimeTrack(time.Now(), "FR GetThreads")
 	// Check for forum existence (i dunno how to do it otherwise)
 	sqlStatement := `
 		SELECT	1
