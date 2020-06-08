@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"egogoger/internal/pkg/cache"
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/thread"
 	userRepository "egogoger/internal/pkg/user/repository"
@@ -127,13 +128,10 @@ func (tr *threadRepository) GetInfo(thrd *models.Thread, slugOrId string) int {
 	} else {
 		whereCondition = fmt.Sprintf("id = %v", threadId)
 	}
-	sqlStatement := fmt.Sprintf(`
-		SELECT
-			id, title, author, forum, message, votes, slug, created
-		FROM
-			thread
-		WHERE
-			%v;`, whereCondition)
+	sqlStatement := `
+		SELECT	id, title, author, forum, message, votes, slug, created
+		FROM	thread
+		WHERE	` + whereCondition + ";"
 	row := tr.db.QueryRow(context.Background(), sqlStatement)
 	err = row.Scan(
 		&thrd.Id,
@@ -201,21 +199,9 @@ func (tr *threadRepository) UpdateThread(thrd *models.Thread, slugOrId string) i
 }
 
 func (tr *threadRepository) GetPosts(query *models.PostQuery) ([]models.Post, int) {
-	// Check for thread existence (i dunno how to do it otherwise)
 	var threadId int
-	var err error
-	sqlStatement := `
-		SELECT 	id
-		FROM 	thread
-		`
-	if threadId, err = strconv.Atoi(query.SlugOrId); err != nil {
-		sqlStatement += "WHERE 		slug = $1;"
-		err = tr.db.QueryRow(context.Background(), sqlStatement, query.SlugOrId).Scan(&threadId)
-	} else {
-		sqlStatement += "WHERE 		id = $1;"
-		err = tr.db.QueryRow(context.Background(), sqlStatement, threadId).Scan(&threadId)
-	}
-	if err != nil {
+	var exists bool
+	if exists, threadId = cache.ThreadExists(query.SlugOrId); !exists {
 		return nil, http.StatusNotFound
 	}
 
@@ -343,18 +329,10 @@ func (tr *threadRepository) Vote(vote *models.Vote) (*models.Thread, models.Mess
 		&thrd.Slug,
 		&thrd.Created)
 	if err != nil {
-		return nil, models.Message{
-			Error:   err,
-			Message: fmt.Sprintf("Vote: %v", err),
-			Status:  http.StatusInternalServerError,
-		}
+		return nil, models.CreateError(err, fmt.Sprintf("Vote: %v", err), http.StatusInternalServerError)
 	}
 
-	return &thrd, models.Message{
-		Error:   nil,
-		Message: "",
-		Status:  http.StatusOK,
-	}
+	return &thrd, models.CreateSuccess(http.StatusOK)
 }
 
 // Indexed
@@ -377,7 +355,6 @@ func (tr *threadRepository) getPostsFlat(threadId int, query *models.PostQuery) 
 	return getPostsWithParentFrom(rows), http.StatusOK
 }
 
-// Bitmap HEAP?
 func (tr *threadRepository) getPostsTree(threadId int, query *models.PostQuery) ([]models.Post, int) {
 	since := ""
 	if query.Since != -1 {

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"egogoger/internal/pkg/cache"
 	"egogoger/internal/pkg/forum"
 	"egogoger/internal/pkg/models"
 	threadRepo "egogoger/internal/pkg/thread/repository"
@@ -23,14 +24,10 @@ func NewPgxForumRepository(db *pgxpool.Pool) forum.Repository {
 }
 
 func (fr *forumRepository) CreateForum(frm *models.Forum) models.Message {
-	// TODO: seq scan
 	sqlStatement := `
-		SELECT
-			title, usr, slug, posts, threads
-		FROM
-			forum
-		WHERE
-			slug = $1;`
+		SELECT	title, usr, slug, posts, threads
+		FROM	forum
+		WHERE	slug = $1;`
 	rows := fr.db.QueryRow(context.Background(), sqlStatement, frm.Slug)
 	tempForum := models.Forum{}
 	err := rows.Scan(
@@ -52,28 +49,16 @@ func (fr *forumRepository) CreateForum(frm *models.Forum) models.Message {
 
 	// First entry of such combination
 	sqlStatement = `
-		INSERT INTO
-			forum (title, usr, slug)
-		SELECT
-			$1, U.nickname, $3
-		FROM
-			usr U
-		WHERE
-			U.nickname = $2
-		RETURNING
-			usr;`
+		INSERT INTO	forum (title, usr, slug)
+		SELECT		$1, U.nickname, $3
+		FROM		usr U
+		WHERE		U.nickname = $2
+		RETURNING	usr;`
 	if err := fr.db.QueryRow(context.Background(), sqlStatement, frm.Title, frm.Usr, frm.Slug).Scan(&frm.Usr); err != nil {
-		return models.Message{
-			Error:   nil,
-			Message: fmt.Sprintf("Can't find user with nickname: %v", *frm.Usr),
-			Status:  http.StatusNotFound,
-		}
+		return models.CreateError(err, fmt.Sprintf("Can't find user with nickname: %v", *frm.Usr), http.StatusNotFound)
 	} else {
-		return models.Message{
-			Error:   nil,
-			Message: "",
-			Status:  http.StatusCreated,
-		}
+		cache.SetForumInMemory(frm.Slug)
+		return models.CreateSuccess(http.StatusCreated)
 	}
 }
 
@@ -140,13 +125,14 @@ func (fr *forumRepository) CreateThread(thrd *models.Thread) int {
 	if err != nil {
 		return http.StatusNotFound			// User not found
 	} else {
+		cache.SaveThread(thrd.Slug, thrd.Id)
 		_, _ = fr.db.Exec(context.Background(), threadRepo.QueryInsertAuthor, thrd.Forum, thrd.Author)
-		return http.StatusCreated			// All okay
+		return http.StatusCreated
 	}
 }
 
 func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
-	if cTag, err := fr.db.Exec(context.Background(), "SELECT 1 FROM forum WHERE slug = $1;", query.Slug); err != nil || cTag.RowsAffected() == 0 {
+	if !cache.ForumExists(query.Slug) {
 		return nil, http.StatusNotFound
 	}
 
@@ -158,13 +144,13 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 			subWhere = fmt.Sprintf("AND author < '%v' ", query.Since)
 		}
 		subCondition = "ORDER BY author DESC LIMIT $2"
-		condition += "ORDER BY nickname DESC LIMIT $2"
+		condition += "ORDER BY nickname DESC"
 	} else {
 		if query.Since != "" {
 			subWhere = fmt.Sprintf("AND author > '%v' ", query.Since)
 		}
 		subCondition = "ORDER BY author ASC LIMIT $2"
-		condition += "ORDER BY nickname ASC LIMIT $2"
+		condition += "ORDER BY nickname ASC"
 	}
 
 	sqlStatement := fmt.Sprintf(`
@@ -200,16 +186,11 @@ func (fr *forumRepository) GetUsers(query models.Query) ([]models.User, int) {
 }
 
 func (fr *forumRepository) GetThreads(query models.Query) ([]models.Thread, int) {
-	// Check for forum existence (i dunno how to do it otherwise)
-	sqlStatement := `
-		SELECT	1
-		FROM	forum
-		WHERE	slug = $1;`
-	if cTag, err := fr.db.Exec(context.Background(), sqlStatement, query.Slug); err != nil || cTag.RowsAffected() == 0 {
+	if !cache.ForumExists(query.Slug) {
 		return nil, http.StatusNotFound
 	}
 
-	sqlStatement = `
+	sqlStatement := `
 		SELECT	id, title, author, forum, message, votes, slug, created
 		FROM	thread
 		WHERE	forum = $1 `

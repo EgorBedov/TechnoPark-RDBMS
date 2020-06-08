@@ -40,6 +40,14 @@ func ConnectToDB() *pgxpool.Pool {
 	return db
 }
 
+func GetPool() *pgxpool.Pool {
+	return db
+}
+
+func Active() bool {
+	return db != nil
+}
+
 func InsertPlaceholders(query string, length int) string {
 	var indices []interface{}
 	for iii := 0; iii < length; iii++ {

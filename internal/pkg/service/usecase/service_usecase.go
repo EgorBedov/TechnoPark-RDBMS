@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"egogoger/internal/pkg/cache"
 	"egogoger/internal/pkg/models"
 	"egogoger/internal/pkg/service"
 )
@@ -14,6 +15,8 @@ func NewServiceUseCase(f service.Repository) service.UseCase {
 }
 
 func (su *serviceUseCase) TruncateAll() int {
+	cache.ClearThreadsCache()
+	cache.ClearForumsCache()
 	return su.serviceRepo.TruncateAll()
 }
 

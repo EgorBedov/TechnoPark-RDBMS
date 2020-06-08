@@ -35,6 +35,7 @@ CREATE UNLOGGED TABLE IF NOT EXISTS thread
     created     TIMESTAMP           DEFAULT current_timestamp
 );
 
+
 CREATE INDEX ON thread (forum, created);
 CREATE INDEX ON thread (forum, author);
 
@@ -52,13 +53,16 @@ CREATE UNLOGGED TABLE IF NOT EXISTS post
 );
 
 CREATE INDEX ON post USING HASH (forum);
--- CREATE INDEX ON post (parent);
-CREATE INDEX ON post (thread_id);
-CREATE INDEX ON post (forum, author);
-CREATE INDEX ON post (thread_id) WHERE parent = 0;
-CREATE INDEX ON post (path);
-CREATE INDEX ON post ((path[1]));
-CREATE INDEX ON post (id, (path[1]));
+CREATE INDEX ON post (thread_id ASC);
+CREATE INDEX ON post (thread_id, id ASC, path ASC) WHERE thread_id < 5000;
+CREATE INDEX ON post (thread_id, id ASC, path ASC) WHERE thread_id >= 5000;
+CREATE INDEX ON post (forum, author ASC);
+CREATE INDEX ON post (thread_id ASC) WHERE parent = 0;
+CREATE INDEX ON post (thread_id ASC, (path[1]) ASC) WHERE parent = 0;
+CREATE INDEX ON post ((path[1]) ASC) WHERE parent = 0;
+CREATE INDEX ON post (path ASC);
+CREATE INDEX ON post ((path[1]) ASC);
+CREATE INDEX ON post (id ASC, (path[1]) ASC);
 
 -- Stores authors of posts and threads in a forum
 CREATE UNLOGGED TABLE IF NOT EXISTS forum_authors (
