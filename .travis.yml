@@ -3,10 +3,12 @@ go: 1.13.x
 os: linux
 services: docker
 
-before_script:
+before_install:
   - docker build -t e.bedov https://github.com/EgorBedov/TechnoPark-RDBMS.git
   - docker run -p 5000:5000 --name e.bedov -t e.bedov
-  - docker ps
+  - docker ps -a
+
+before_script:
   - go get -u -v github.com/bozaro/tech-db-forum
   - go build github.com/bozaro/tech-db-forum
 
