@@ -10,6 +10,7 @@ jobs:
 
   build:
     name: Build and Test
+    if: "! contains(toJSON(github.event.commits.*.message), '[skip-ci]')"
     runs-on: ubuntu-latest
     steps:
 
@@ -30,4 +31,4 @@ jobs:
       run: ./tech-db-forum fill --timeout=900 || exit 1
 
     - name: Run perf test
-      run: ./tech-db-forum perf --duration=600 --step=60 || exit 1
+      run: ./tech-db-forum perf --duration=100 --step=10 || exit 1
