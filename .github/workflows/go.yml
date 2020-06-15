@@ -1,0 +1,33 @@
+name: Go
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+
+jobs:
+
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Start docker
+      run: |
+        docker build -t e.bedov https://github.com/EgorBedov/TechnoPark-RDBMS.git
+        docker run --detach -p 5000:5000 --name e.bedov -t e.bedov
+
+    - name: Build test app
+      run: |
+        go get -u -v github.com/bozaro/tech-db-forum
+        go build github.com/bozaro/tech-db-forum
+
+    - name: Run func test
+      run: ./tech-db-forum func || exit 1
+
+    - name: Fill db
+      run: ./tech-db-forum fill --timeout=900 || exit 1
+
+    - name: Run perf test
+      run: ./tech-db-forum perf --duration=100 --step=10 || exit 1
