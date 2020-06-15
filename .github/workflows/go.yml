@@ -1,0 +1,52 @@
+name: Go
+
+on:
+  push:
+    branches: [ master, develop, feature/*, bugfix/* ]
+  pull_request:
+    branches: [ master, develop ]
+
+jobs:
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Setup PostgreSQL
+      uses: Harmon758/postgresql-action@v1.0.0
+      with:
+        postgresql version: 12
+        postgresql db: docker
+        postgresql user: docker
+
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.13
+      id: go
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Get dependencies
+      run: |
+        go get -v -t -d ./...
+        if [ -f Gopkg.toml ]; then
+            curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+            dep ensure
+        fi
+
+    - name: Build
+      run: go build -v .
+    
+    - name: Build test app
+      run: |
+        go get -u -v github.com/bozaro/tech-db-forum
+        go build github.com/bozaro/tech-db-forum
+
+    - name: Test
+      run: |
+        ./tech-db-forum func
+        ./tech-db-forum fill --timeout=900
+        ./tech-db-forum perf --duration=600 --step=60
