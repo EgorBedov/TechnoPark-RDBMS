@@ -12,7 +12,7 @@ before_script:
   - go build github.com/bozaro/tech-db-forum
 
 script:
-  - ./tech-db-forum func || travis_terminate 1
+  - ./tech-db-forum func --url=http://localhost:5000/api || travis_terminate 1
   - ./tech-db-forum fill --timeout=900 || travis_terminate 1
   - ./tech-db-forum perf --duration=100 --step=10 || travis_terminate 1
 
