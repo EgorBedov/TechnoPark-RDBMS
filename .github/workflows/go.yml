@@ -44,14 +44,14 @@ jobs:
     
     - name: Build test app
       run: |
+        cd /tmp
         mkdir tester
         cd tester
         go get -u -v github.com/bozaro/tech-db-forum
         go build github.com/bozaro/tech-db-forum
-        cd ..
 
     - name: Test
       run: |
-        ./tester/tech-db-forum func
-        ./tester/tech-db-forum fill --timeout=900
-        ./tester/tech-db-forum perf --duration=600 --step=60
+        ./tech-db-forum func
+        ./tech-db-forum fill --timeout=900
+        ./tech-db-forum perf --duration=600 --step=60
