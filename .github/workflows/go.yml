@@ -52,6 +52,7 @@ jobs:
 
     - name: Test
       run: |
+        cd /tmp/tester
         ./tech-db-forum func
         ./tech-db-forum fill --timeout=900
         ./tech-db-forum perf --duration=600 --step=60
