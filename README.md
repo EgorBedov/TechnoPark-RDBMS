@@ -1,4 +1,4 @@
-![Go](https://github.com/EgorBedov/TechnoPark-RDBMS/workflows/Go/badge.svg)
+![Go](https://github.com/EgorBedov/TechnoPark-RDBMS/workflows/Go/badge.svg?branch=master)
 [![Build Status](https://travis-ci.org/EgorBedov/TechnoPark-RDBMS.svg?branch=master)](https://travis-ci.org/EgorBedov/TechnoPark-RDBMS)
 
 # TechnoPark-RDBMS
