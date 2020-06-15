@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/EgorBedov/TechnoPark-RDBMS.svg?branch=master)](https://travis-ci.org/EgorBedov/TechnoPark-RDBMS)
+
 # TechnoPark-RDBMS
 
 This is simple API server for requests from [tech-db-forum](https://github.com/bozaro/tech-db-forum)
