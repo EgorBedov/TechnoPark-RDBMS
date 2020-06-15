@@ -14,3 +14,6 @@ script:
   - ./tech-db-forum func -u http://localhost:5000/api || travis-terminate 1
   - ./tech-db-forum fill --timeout=900 || travis-terminate 1
   - ./tech-db-forum perf --duration=100 --step=10 || travis-terminate 1
+
+after_script:
+  - echo 'Success'
