@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forum-tester
+  labels:
+    app: forum-tester
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: forum-tester
+  template:
+    metadata:
+      labels:
+        app: forum-tester
+    spec:
+      containers:
+        - name: forum-tester
+          image: technopark-rdbms_forum_tester
+          imagePullPolicy: IfNotPresent

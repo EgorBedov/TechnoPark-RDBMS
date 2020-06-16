@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forum-server
+  labels:
+    app: forum-server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: forum-server
+  template:
+    metadata:
+      labels:
+        app: forum-server
+    spec:
+      containers:
+        - name: forum-server
+          image: technopark-rdbms_forum_server
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5000
