@@ -1,0 +1,17 @@
+version: '3.3'
+services:
+
+  forum_tester:
+    container_name: forumtester
+    build:
+      context: .
+      dockerfile: ./dockerfiles/tester.Dockerfile
+
+  forum_server:
+    container_name: forumserver
+    command: ./bin/egogoger-rdbms
+    ports:
+      - '5000:5000'
+    build:
+      context: .
+      dockerfile: Dockerfile
