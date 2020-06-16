@@ -46,6 +46,6 @@ jobs:
           password: ${{ secrets.PRIVATE_KEY }}
           script: |
             cd /home/${{ secrets.USERNAME }}/TechnoPark-RDBMS
-            echo '${{ secrets.PRIVATE_KEY }}' |  git pull
-            echo '${{ secrets.PRIVATE_KEY }}' |  docker-compose build
-            echo '${{ secrets.PRIVATE_KEY }}' |  kubectl rollout restart deployments
+            echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S git pull
+            echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S docker-compose build
+            echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S kubectl rollout restart deployments
