@@ -9,7 +9,7 @@ on:
 jobs:
 
   build:
-    name: Build and Test
+    name: Build and Test locally
     runs-on: ubuntu-latest
     steps:
 
@@ -33,12 +33,12 @@ jobs:
 #      run: ./tech-db-forum perf --duration=100 --step=10 || exit 1
 
   deploy:
-    name: Deploy with Kubernetes
+    name: Deploy
     runs-on: ubuntu-latest
     needs: build
     steps:
 
-      - name: Update files
+      - name: Update deployment
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
@@ -47,5 +47,23 @@ jobs:
           script: |
             cd /home/${{ secrets.USERNAME }}/TechnoPark-RDBMS
             echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S git pull
-            echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S docker-compose build
-            echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S kubectl rollout restart deployments
+            echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S docker-compose build forum_server
+            echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S kubectl rollout restart deployments/forum-server
+            echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S curl "$(kubectl get service/forum-server -o jsonpath='{.spec.clusterIP}')":5000/api/service/status
+
+#  test:
+#    name: Test on remote
+#    runs-on: ubuntu-latest
+#    needs: deploy
+#    steps:
+#
+#      - name: Run tests
+#        uses: appleboy/ssh-action@master
+#        with:
+#          host: ${{ secrets.HOST }}
+#          username: ${{ secrets.USERNAME }}
+#          password: ${{ secrets.PRIVATE_KEY }}
+#          script: |
+#            cd /home/${{ secrets.USERNAME }}/TechnoPark-RDBMS
+#            echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S docker-compose build forum_tester
+#            echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S kubectl rollout restart deployments/forum-tester
