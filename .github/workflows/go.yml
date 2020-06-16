@@ -49,7 +49,6 @@ jobs:
             echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S git pull
             echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S docker-compose build forum_server
             echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S kubectl rollout restart deployments/forum-server
-            echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S curl "$(echo '${{ secrets.PRIVATE_KEY }}' |  sudo -S | kubectl get service/forum-server -o jsonpath='{.spec.clusterIP}')":5000/api/service/status
 
 #  test:
 #    name: Test on remote
